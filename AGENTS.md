@@ -121,16 +121,37 @@ the security. Never treat an unlinked URL as protection.
 
 ## Deployment
 
-**Cloudflare Pages**, building from `main`. The domain's DNS is already at
-Cloudflare, the build is static, and it is free — Railway would mean paying for
-a process to run around the clock serving files a CDN serves better. Railway is
-the right home for the *portal* later, which needs a server and a database.
+**Railway**, building and deploying from `main` (owner decision — everything in
+one place alongside VTS). Pushing to `main` is a production release.
 
-- Build command `npm run build`, output directory `dist`.
-- `public/_redirects` sends every unmatched path to `index.html` so client-side
-  routes resolve on a hard refresh. **Without it, every URL but `/` 404s** on a
-  direct visit — which is exactly how a credential badge link arrives.
-- Pushing to `main` deploys. Treat a merge to `main` as a production release.
+Railway runs a *process*, not a CDN, so `server.js` serves the built `dist/`.
+It is dependency-free on purpose; read its header comment before changing it,
+because each of its four rules is load-bearing:
+
+- **`index.html` is never cached; hashed assets are cached forever.** Vite
+  fingerprints everything in `assets/`, so those are safe to pin — but a cached
+  `index.html` keeps pointing at the previous build's filenames after a deploy,
+  and the site silently serves a version that no longer exists.
+- **An unmatched path falls back to `index.html`** so client-side routes resolve
+  on a hard refresh. Without it every URL but `/` 404s on a direct visit, which
+  is exactly how a credential badge link arrives.
+- **The fallback only applies to requests that asked for HTML.** A missing image
+  or script must 404 honestly; answering it with the HTML shell turns a broken
+  asset into a confusing parse error.
+- **Paths are resolved and checked to be inside `dist/`**, so a crafted URL
+  cannot read files above the web root.
+
+`railway.json` holds the build and start commands and a health check on `/`.
+`.nvmrc` pins Node 20.
+
+**A failed build is harmless — a failed start is an outage.** Railway keeps the
+previous version live when a build fails, but a build that succeeds and then
+exits at startup replaces a healthy container with a dead one. Run
+`npm run verify` before pushing.
+
+`public/_redirects` is Cloudflare's SPA-fallback file. It is inert on Railway
+and kept only so the site can be served from Cloudflare Pages without changes —
+`server.js` is what implements that rule here.
 
 ## Verifying changes
 
