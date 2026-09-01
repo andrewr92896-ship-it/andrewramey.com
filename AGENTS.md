@@ -102,22 +102,43 @@ What was taken is the *visual identity only*. The terminal's sidebar-workspace
 shell was deliberately left behind: it is built for someone who signs in daily,
 and a portfolio visitor scrolls and leaves.
 
-## The portal is a DIFFERENT SITE — do not build it here
+## THE PUBLIC SITE HAS NO SIGN-IN, AND MUST NEVER GAIN ONE
 
-Andrew wants a private portal for managing AI contracts and personal admin. It
-lives at **`portal.andrewramey.com`**, in its **own private repository**, as its
-**own deployment**.
+Owner instruction. The portfolio carries **no login button, no sign-in dialog,
+no auth state and no stored auth flag** — not hidden, not behind a keyboard
+shortcut, not in a footer. A visitor must have nothing on the page that invites
+them to try to log in.
 
-**It is a subdomain, never a path.** `andrewramey.com/portal` would put private
-code in the same build as the public site, redeploy each on every change to the
-other, and let a bug in either take down both. A path is not a boundary.
+The Claude Design handoff includes a "Sign in" button in the header and a
+sign-in modal. **Both are prototype chrome and are deliberately not built.**
+They sit outside the content model — `nav.items` is Work, Credentials,
+Experience, About, Contact and contains no auth entry — so dropping them
+changes nothing else. Do not reintroduce them when implementing the design.
+
+## The editor is a DIFFERENT SITE — do not build it here
+
+The owner editor lives at **`admin.andrewramey.com`**, in its **own private
+repository**, as its **own Railway service**. Andrew reaches it by typing that
+address; nothing on the portfolio links to it.
+
+**It is a subdomain, never a path.** `andrewramey.com/admin` would put the
+editor's code in the same build as the public site, redeploy each on every
+change to the other, and let a bug in either take down both. A path is not a
+boundary.
 
 So: **nothing in this repository may gain a login, a session, a database, or a
-private screen.** If a request here starts to need one, it belongs in the portal
+private screen.** If a request here starts to need one, it belongs in the admin
 repo instead. Say so rather than building it.
 
-Not linking the portal from this site is tidiness, not security — the login is
-the security. Never treat an unlinked URL as protection.
+**Being unlinked is not security, and here it is not even obscurity.** The
+moment Railway issues a TLS certificate for `admin.andrewramey.com`, that
+hostname is published in public Certificate Transparency logs, which anyone can
+search — and `admin` is among the first names any scanner guesses anyway. The
+authentication is the entire defence. Build it accordingly.
+
+**The public site is a static render of published content.** The editor writes
+the content model; this repo renders it. That split is what keeps the public
+build free of everything above.
 
 ## Deployment
 

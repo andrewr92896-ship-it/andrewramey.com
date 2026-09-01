@@ -2,21 +2,24 @@ import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
+import { MODEL } from './content/model';
 
 /**
- * The page is one continuous read, but its sections have to be linkable on
+ * The portfolio is one scrolling page, but its sections must be linkable on
  * their own — a credential badge carries one URL, and a job application often
- * points at a specific part of the site. So each section has a real path that
- * renders the same page and lands on that section.
+ * points at a specific part of the site.
  *
- * Changing a published path breaks a link that may be impossible to update;
- * add a new one and keep the old, never rename. See AGENTS.md.
+ * So every section id is also a real path. `/work` renders the page and lands
+ * on the Selected work section, and survives a hard refresh because server.js
+ * falls back to index.html.
+ *
+ * NEVER CHANGE A PUBLISHED PATH. Some of these links cannot be updated once
+ * they are out in the world. Add a new one and keep the old.
  */
-export const SECTION_ROUTES = ['work', 'credentials', 'education', 'experience', 'skills', 'contact'] as const;
+const SECTION_PATHS = MODEL.sections.map((s) => s.id);
 
-function ScrollToSection() {
+function LandOnSection() {
   const { pathname } = useLocation();
-
   useEffect(() => {
     const id = pathname.replace(/^\/|\/$/g, '');
     if (!id) {
@@ -25,22 +28,21 @@ function ScrollToSection() {
     }
     const el = document.getElementById(id);
     if (!el) return;
-    // 'auto' rather than 'smooth': arriving from an external link should land
-    // on the section, not animate past several others on the way.
-    el.scrollIntoView({ behavior: 'auto', block: 'start' });
+    // 'auto', not 'smooth': arriving from an external link should land on the
+    // section, not animate past every one above it on the way down.
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 20, behavior: 'auto' });
   }, [pathname]);
-
   return null;
 }
 
 export default function App() {
   return (
     <>
-      <ScrollToSection />
+      <LandOnSection />
       <Routes>
         <Route path="/" element={<Home />} />
-        {SECTION_ROUTES.map((s) => (
-          <Route key={s} path={`/${s}`} element={<Home />} />
+        {SECTION_PATHS.map((id) => (
+          <Route key={id} path={`/${id}`} element={<Home />} />
         ))}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/components/ui.tsx","./src/data/credentials.ts","./src/data/education.ts","./src/data/experience.ts","./src/data/profile.ts","./src/data/skills.ts","./src/data/work.ts","./src/pages/Home.tsx","./src/pages/NotFound.tsx","./src/theme/tokens.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/content/model.ts","./src/content/types.ts","./src/pages/Home.tsx","./src/pages/NotFound.tsx","./src/render/Portfolio.tsx","./src/render/fields.tsx","./src/render/sections.tsx","./src/theme/tokens.ts"],"version":"5.9.3"}

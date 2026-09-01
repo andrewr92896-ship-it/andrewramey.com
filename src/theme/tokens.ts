@@ -1,37 +1,55 @@
 // Design tokens for andrewramey.com.
 //
-// The palette is lifted from the VTS Terminal's "Meridian" tokens so the
-// portfolio and the terminal it showcases read as one person's work. The
-// values are duplicated deliberately rather than imported: this is a separate
-// deployment and must never depend on that repository.
+// These are the VTS marketing site's surface values, not the terminal's
+// slightly darker set — Andrew asked the portfolio to match the marketing page
+// it sits beside. Values live here and nowhere else: a literal scattered into
+// a component is how two surfaces come to disagree about the same colour.
+//
+// Duplicated from VTS deliberately and permanently. This is a separate
+// deployment and may never import from that repository.
 
 export const C = {
-  // Surfaces (blue-tinted dark)
-  bg: '#050B18',
-  panel: '#0A1426',
-  panel2: '#0C1930',
+  // Surfaces
+  bg: '#061026',
+  panel: 'rgba(13,31,68,.55)',
+  panel2: '#08142e',
 
   // Hairlines
-  line: '#152139',
-  line2: '#1E2E52',
-  hover: '#24365F',
+  line: '#16294f',
+  line2: '#1c3a7a',
 
   // Text
-  text: '#E9EFFB',
-  muted: '#93A5C9',
-  faint: '#5E7098',
+  text: '#eef3ff',
+  muted: '#a9b9d9',
+  faint: '#6f84b0',
 
   // Accent
-  gold: '#EBCB74',
-  gold2: '#C9A24B',
-  goldText: '#241A05',
+  gold: '#ebcb74',
+  gold2: '#c9a24b',
+  goldText: '#092151',
 
   // Fonts
+  sans: "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
   mono: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
-  sans: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 } as const;
 
-export const GOLD_GRADIENT = 'linear-gradient(180deg, #EBCB74, #C9A24B)';
+export const GOLD_GRADIENT = `linear-gradient(180deg, ${C.gold}, ${C.gold2})`;
+
+/** The page ground. One gradient, stated once. */
+export const PAGE_BG = `radial-gradient(1100px 640px at 20% -6%, #12336f 0%, ${C.bg} 62%)`;
+
+/** The content column, shared by the header, every section and the footer. */
+export const COLUMN = 'min(1080px, calc(100% - 40px))';
+
+/** Vertical space above a section. */
+export const PAD = { compact: 44, normal: 68, roomy: 96 } as const;
+
+/** Inner padding of a content box. */
+export const BOX_PAD = {
+  compact: '14px 16px',
+  normal: '22px 24px',
+  roomy: '30px 34px',
+} as const;
 
 /** A translucent tint of a hex colour. */
 export function tint(hex: string, alpha: number): string {
