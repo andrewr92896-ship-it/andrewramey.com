@@ -24,6 +24,8 @@
 //   6. While maintenance is on, every other path gets the notice — see
 //      siteState.js for the rule that decides, and maintenance.js for why it
 //      is a 503 rather than a 200.
+//   7. /files/… is streamed from the admin, so a résumé link is on this domain
+//      rather than on admin.andrewramey.com. See files.js.
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
@@ -32,6 +34,7 @@ import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { maintenanceOn, startPolling } from './siteState.js';
 import { sendMaintenance } from './maintenance.js';
+import { serveFile } from './files.js';
 
 const ROOT = resolve(fileURLToPath(new URL('./dist', import.meta.url)));
 const PORT = Number(process.env.PORT) || 8080;
@@ -114,6 +117,9 @@ const server = createServer(async (req, res) => {
     sendMaintenance(req, res);
     return;
   }
+
+  // Rule 7. Answers only for /files/…; anything else falls through.
+  if (await serveFile(req, res, reqPath)) return;
 
   const urlPath = req.url === '/' ? '/index.html' : req.url;
   const path = resolvePath(urlPath);

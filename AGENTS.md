@@ -174,6 +174,37 @@ the site is actually asking. **Keep that header** — without it the admin's
 `npm run test:maintenance` drives all of it against a real server with a
 stand-in admin, and is part of `npm run verify`.
 
+### The other thing that crosses: uploaded files
+
+`files.js` streams `/files/…` from the admin, which is where they are stored.
+
+**THE PROXY EXISTS FOR THE URL.** A résumé link is pasted into job applications
+and sits in strangers' inboxes for months. `admin.andrewramey.com/files/…`
+would look wrong on an application and would advertise the door to everyone who
+saw it; `andrewramey.com/files/…` is the address that should be in
+circulation. It also means where the files are actually stored can change later
+without breaking a single link already out there.
+
+- **Only a Content-Type from a short allowlist is passed through.** No
+  `text/html`, no `image/svg+xml`, nothing script-bearing: served from this
+  origin those would be script running on it. The admin already refuses them at
+  upload; this is the second lock, because a file host must never be one edit
+  away from hosting script.
+- **It is streamed, not buffered** — a 25 MB download must not become 25 MB of
+  this process's memory per person fetching it.
+- **A failed download is only a failed download.** An unreachable admin answers
+  502 for that one request and the page is untouched, the same posture as the
+  maintenance poll.
+- **Files ARE covered by maintenance**, and that is a decision rather than an
+  oversight. Exempting them was considered — those links are promises — and
+  rejected: "down for maintenance" would then be false, and the 503 already
+  tells a browser the condition is temporary. `test:maintenance` pins it so it
+  is not quietly reversed either way.
+- The admin's origin is **derived from `ADMIN_STATE_URL`** so there is one
+  address to set, and taken as its ORIGIN rather than by trimming the known path
+  off the end — a suffix match silently produces a wrong base the day that path
+  changes, and the symptom is every file 404ing for no visible reason.
+
 ## Deployment
 
 **Railway**, building and deploying from `main` (owner decision — everything in
@@ -215,9 +246,9 @@ and kept only so the site can be served from Cloudflare Pages without changes �
 
 ## Verifying changes
 
-`npm run verify` — typecheck, build, `test:maintenance`. Run it before pushing;
-a failed build means the site does not update, and the previous version stays
-live.
+`npm run verify` — typecheck, build, `test:maintenance` (which covers the file
+proxy too). Run it before pushing; a failed build means the site does not
+update, and the previous version stays live.
 
 ## Conventions
 
