@@ -1,3 +1,18 @@
+// ⚠ MIRRORED FILE — an identical copy lives in the other repository.
+//
+// andrewr92896-ship-it/andrewramey.com  ·  andrewr92896-ship-it/andrewramey-admin
+//
+// The portfolio renders it for the public; the admin renders it so the owner can
+// see the site privately and, once the editor exists, edit through it. THERE IS
+// ONE RENDERER, NEVER TWO — this is how two deployments share it without either
+// importing across a boundary that exists on purpose.
+//
+// CHANGE IT IN BOTH REPOSITORIES, AND UPDATE portfolio-mirror.json IN BOTH.
+// `npm run verify:mirror` hashes every mirrored file against that manifest: a
+// change made in one repo alone fails there, and updating the manifest then
+// fails the OTHER repo until its copy is brought across too. That is what makes
+// drift impossible to ship rather than merely discouraged.
+
 // The content model. The whole page is one JSON document of this shape.
 //
 // The public site is a pure renderer of this model, and the owner editor —

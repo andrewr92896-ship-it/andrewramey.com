@@ -1,0 +1,8 @@
+{
+  "src/content/types.ts": "016aac8f0aac8234c15f4754f2d7b29a31f1343a1f6225b3299b1b1e3566e590",
+  "src/content/model.ts": "90433b997b3751b17da7eac4e41615f8767b356b327e860ff0d579abc5c345ea",
+  "src/render/fields.tsx": "c5b5deb95767933956a579130db9257b1145001cb61aa25f824ea7ac394029ad",
+  "src/render/sections.tsx": "ee92711fbf565443b306c757ec7ea4df65154aae561282bfca12e738f6519386",
+  "src/render/Portfolio.tsx": "dc4ee63c24318fd53b8346039bc9ba4b68417c2fe3f1197fbadb7f82ec7030af",
+  "src/styles.css": "a070fda7f599d7f031bd12c31844f275a2d378919d7fde0491fab17aead0e2b0"
+}

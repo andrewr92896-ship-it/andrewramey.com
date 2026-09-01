@@ -140,6 +140,26 @@ authentication is the entire defence. Build it accordingly.
 the content model; this repo renders it. That split is what keeps the public
 build free of everything above.
 
+### THE RENDERER IS MIRRORED INTO THE ADMIN
+
+Six files here are **byte-identical** in `andrewramey-admin`, at the same paths,
+each carrying a banner saying so: `src/content/types.ts`,
+`src/content/model.ts`, `src/render/{fields,sections,Portfolio}.tsx` and
+`src/styles.css`. The admin renders them so the owner can see the site while it
+is not public, and the editor will edit through them. **There is one renderer,
+never two** — the copy exists because two deployments may not import from each
+other, which is the boundary above.
+
+**`npm run verify:mirror` is what stops it becoming a fork**, and it works
+across two repos that cannot see each other: `portfolio-mirror.json` holds a
+SHA-256 per file and is identical in both. Edit a mirrored file and verify fails
+here; update the manifest and it passes here and starts failing in the admin,
+until the change is carried across. Neither half can be forgotten silently.
+
+    # after a deliberate change:
+    npm run verify:mirror -- --write
+    # then copy BOTH the file and portfolio-mirror.json to andrewramey-admin
+
 ### The one thing that does cross: maintenance mode
 
 `siteState.js` asks the admin whether the site should be showing the
@@ -246,9 +266,9 @@ and kept only so the site can be served from Cloudflare Pages without changes �
 
 ## Verifying changes
 
-`npm run verify` — typecheck, build, `test:maintenance` (which covers the file
-proxy too). Run it before pushing; a failed build means the site does not
-update, and the previous version stays live.
+`npm run verify` — typecheck, `verify:mirror`, build, `test:maintenance` (which
+covers the file proxy too). Run it before pushing; a failed build means the site
+does not update, and the previous version stays live.
 
 ## Conventions
 
