@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
-import { MODEL } from './content/model';
+import { SITE_MODEL } from './content/live';
 
 /**
  * The portfolio is one scrolling page, but its sections must be linkable on
@@ -16,7 +16,7 @@ import { MODEL } from './content/model';
  * NEVER CHANGE A PUBLISHED PATH. Some of these links cannot be updated once
  * they are out in the world. Add a new one and keep the old.
  */
-const SECTION_PATHS = MODEL.sections.map((s) => s.id);
+const SECTION_PATHS = SITE_MODEL.sections.map((s) => s.id);
 
 function LandOnSection() {
   const { pathname } = useLocation();

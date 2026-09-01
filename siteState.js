@@ -1,4 +1,5 @@
-// Whether the site should be showing the maintenance notice.
+// What the admin tells this site: whether to show the maintenance notice, and
+// what the page's content is.
 //
 // The answer belongs to the admin (admin.andrewramey.com), which is a separate
 // deployment. This asks it on a timer and caches what it hears.
@@ -33,6 +34,30 @@ const STALE_MS = 120_000;
 let last = { maintenance: false, at: 0 };
 let logged = null;
 
+/**
+ * The published content, and the rule for it is DIFFERENT from maintenance's.
+ *
+ * Maintenance goes stale on purpose: a silent admin must not be able to leave
+ * the site down on the strength of an old yes. Content is the opposite — the
+ * last thing that was published is still the right thing to serve, however long
+ * ago it was fetched, so this is kept indefinitely once it arrives.
+ *
+ * Null means it has NEVER arrived, and only then does the site fall back to the
+ * model compiled into the bundle. That fallback is what makes the site render
+ * on a completely fresh deploy, and what stops an admin outage blanking it.
+ */
+let content = null;
+
+/**
+ * The published model, or null if this site has never managed to fetch one.
+ *
+ * Null is not an error — it is the honest answer on a first boot, and the
+ * caller renders the bundled model rather than nothing.
+ */
+export function publishedContent() {
+  return content;
+}
+
 /** The current answer. Never throws, never blocks, never guesses "yes". */
 export function maintenanceOn() {
   if (!URL_) return false;
@@ -40,7 +65,30 @@ export function maintenanceOn() {
   return last.maintenance;
 }
 
+async function pollContent() {
+  try {
+    const res = await fetch(`${URL_.replace(/\/site-state\/?$/, '')}/content`, {
+      headers: { accept: 'application/json', 'x-ar-site': 'portfolio' },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    // 404 is "nothing published yet", which is a real answer and not a failure.
+    // Anything already held stays held either way.
+    if (res.status === 404) return;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    const model = body?.model;
+    // Checked before it is kept, because this is what the page renders: a
+    // malformed model would throw in the renderer, which is a blank site.
+    if (model?.nav && Array.isArray(model.sections) && model.sections.length > 0) {
+      content = model;
+    }
+  } catch {
+    // Whatever is already held is still the right thing to serve.
+  }
+}
+
 async function poll() {
+  await pollContent();
   try {
     const res = await fetch(URL_, {
       // The header is how the admin tells a poll from the site apart from a

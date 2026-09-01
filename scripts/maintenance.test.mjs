@@ -1,5 +1,5 @@
-// Maintenance mode and the file proxy, driven against the real server with a
-// stand-in admin.
+// Maintenance mode, the file proxy and content injection, driven against the
+// real server with a stand-in admin.
 //
 // THE CASE THAT MATTERS MOST IS THE LAST GROUP: when the admin cannot be
 // reached, the site stays up. That failure is silent in the worst possible way
@@ -33,8 +33,33 @@ const blobs = {
   // script-bearing must not be able to make this origin host it.
   '/files/evil.html': { status: 200, type: 'text/html', body: '<script>alert(1)</script>' },
 };
+/**
+ * What the stand-in admin publishes.
+ *
+ * The escaping case is the one that matters: a literal </script> inside a body
+ * paragraph is ordinary text an owner might genuinely write, and injected
+ * unescaped it closes the tag early and the rest of the model is parsed as
+ * markup. That is a broken page at best.
+ */
+let published = {
+  status: 200,
+  model: {
+    nav: { logoMode: 'initials', initials: 'AR', logoSize: 30, wordmark: 'PUBLISHED WORDMARK', subline: 's', showWordmark: true, items: [] },
+    sections: [{ id: 'top', type: 'hero', h1: 'PUBLISHED HEADLINE', items: [] }],
+  },
+};
+
 const admin = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
+  if (path.endsWith('/content')) {
+    if (req.headers['x-ar-site'] === 'portfolio') sawSiteHeader = true;
+    if (published.status !== 200) {
+      res.writeHead(published.status, { 'Content-Type': 'application/json' });
+      return res.end('{"error":"nope"}');
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ model: published.model }));
+  }
   if (path.startsWith('/files/')) {
     const blob = blobs[path];
     if (!blob) {
@@ -176,6 +201,50 @@ await withServer(4708, { ADMIN_STATE_URL: 'http://localhost:4799/api/public/site
 await withServer(4709, {}, async (B) => {
   const r = await fetch(`${B}/files/resume.pdf`);
   ok(r.status === 404, 'with no admin configured at all, files are simply not there', `${r.status}`);
+});
+
+// ---- E. published content
+console.log('\nE. PUBLISHED CONTENT');
+answer = { status: 200, body: '{"maintenance":false}' };
+await withServer(4710, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
+  const html = await (await fetch(`${B}/`, { headers: { Accept: 'text/html' } })).text();
+  ok(html.includes('PUBLISHED HEADLINE'), 'the published model is injected into the page itself');
+  ok(html.includes('window.__AR_MODEL__'), 'as window.__AR_MODEL__, so there is no second round trip');
+  ok(!/cache-control:\s*public/i.test(html), 'and the document carries the content, so it is not cached');
+});
+
+console.log('\n   escaping');
+published = {
+  status: 200,
+  model: {
+    nav: { logoMode: 'initials', initials: 'AR', logoSize: 30, wordmark: 'W', subline: 's', showWordmark: true, items: [] },
+    sections: [{ id: 'top', type: 'hero', h1: 'safe', items: [{ body: 'I wrote </script><img src=x onerror=alert(1)> in a paragraph' }] }],
+  },
+};
+await withServer(4711, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
+  const html = await (await fetch(`${B}/`, { headers: { Accept: 'text/html' } })).text();
+  const injected = html.slice(html.indexOf('window.__AR_MODEL__'));
+  const scriptEnd = injected.indexOf('</script>');
+  ok(scriptEnd > 0, 'the injected script has an end tag');
+  // Everything the owner wrote must sit INSIDE the script tag. If the escaping
+  // failed, "onerror=" would appear after it — as live markup on the page.
+  ok(!injected.slice(scriptEnd).includes('onerror='), 'owner text cannot break out of the script tag');
+  ok(injected.slice(0, scriptEnd).includes('u003c'), 'because every < is escaped on the way in');
+});
+
+console.log('\n   fail open');
+published = { status: 500, model: null };
+await withServer(4712, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
+  const r = await fetch(`${B}/`, { headers: { Accept: 'text/html' } });
+  const html = await r.text();
+  ok(r.status === 200, 'an admin that will not serve content leaves the site up', `${r.status}`);
+  ok(html.includes('<div id="root">'), 'and it renders the model compiled into the bundle');
+  ok(!html.includes('window.__AR_MODEL__'), 'with nothing injected, rather than an empty model');
+});
+
+await withServer(4713, {}, async (B) => {
+  const r = await fetch(`${B}/`, { headers: { Accept: 'text/html' } });
+  ok(r.status === 200, 'and with no admin configured at all the site still renders', `${r.status}`);
 });
 
 admin.close();

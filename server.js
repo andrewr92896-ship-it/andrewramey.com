@@ -26,13 +26,16 @@
 //      is a 503 rather than a 200.
 //   7. /files/… is streamed from the admin, so a résumé link is on this domain
 //      rather than on admin.andrewramey.com. See files.js.
+//   8. index.html is composed per request, with the published content injected
+//      into it. See sendShell — the content arrives WITH the document, so the
+//      first paint is the real page rather than a flash and a swap.
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { maintenanceOn, startPolling } from './siteState.js';
+import { maintenanceOn, publishedContent, startPolling } from './siteState.js';
 import { sendMaintenance } from './maintenance.js';
 import { serveFile } from './files.js';
 
@@ -97,6 +100,58 @@ function send(res, status, path, size, { immutable = false } = {}) {
   createReadStream(path).pipe(res);
 }
 
+/**
+ * index.html with the published content injected.
+ *
+ * The alternative — the browser fetching the model after the page loads — costs
+ * a round trip before anything can be drawn, and shows an empty page for the
+ * length of it. This way the document arrives complete.
+ *
+ * ESCAPING IS THE WHOLE RISK HERE. The content is written by the owner in the
+ * admin, but it is still arbitrary text being placed inside a <script> tag: a
+ * literal "</script>" in a body paragraph would close the tag early and the
+ * rest of the model would be parsed as markup. Escaping "<" as \u003c is
+ * JSON-equivalent and closes that, along with the "<!--" case.
+ *
+ * The composed HTML is cached against the model it was built from, so this is
+ * one serialize per publish rather than one per visitor.
+ */
+let shellCache = { model: null, html: null };
+
+function composeShell(raw, model) {
+  if (!model) return raw;
+  if (shellCache.model === model && shellCache.html) return shellCache.html;
+  const json = JSON.stringify(model).replace(/</g, '\\u003c');
+  const html = raw.replace('</head>', `<script>window.__AR_MODEL__=${json}</script></head>`);
+  shellCache = { model, html };
+  return html;
+}
+
+async function sendShell(req, res, path) {
+  let raw;
+  try {
+    raw = await readFile(path, 'utf8');
+  } catch {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+      .end('Site not built. Run `npm run build`.');
+    return;
+  }
+  const html = composeShell(raw, publishedContent());
+  const body = Buffer.from(html, 'utf8');
+  res.writeHead(200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': body.length,
+    // Never cached: it carries the content, so a cached copy is a stale page
+    // that outlives a publish — and it already could not be cached, because it
+    // names the current build's fingerprinted assets.
+    'Cache-Control': 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  });
+  if (req.method === 'HEAD') return res.end();
+  res.end(body);
+}
+
 const server = createServer(async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, { Allow: 'GET, HEAD' }).end('Method not allowed');
@@ -124,6 +179,12 @@ const server = createServer(async (req, res) => {
   const urlPath = req.url === '/' ? '/index.html' : req.url;
   const path = resolvePath(urlPath);
 
+  // Rule 8: the shell is composed, never streamed off disk.
+  if (path === join(ROOT, 'index.html')) {
+    await sendShell(req, res, path);
+    return;
+  }
+
   if (path) {
     const found = await fileAt(path);
     if (found) {
@@ -141,16 +202,9 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  const shell = join(ROOT, 'index.html');
-  const found = await fileAt(shell);
-  if (!found) {
-    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-      .end('Site not built. Run `npm run build`.');
-    return;
-  }
   // 200, not 404 — the router decides what this route is, and it may be a real
   // page. Its own NotFound component answers for the ones that are not.
-  send(res, 200, shell, found.size);
+  await sendShell(req, res, join(ROOT, 'index.html'));
 });
 
 startPolling();

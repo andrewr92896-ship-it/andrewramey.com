@@ -194,6 +194,37 @@ the site is actually asking. **Keep that header** — without it the admin's
 `npm run test:maintenance` drives all of it against a real server with a
 stand-in admin, and is part of `npm run verify`.
 
+### THE CONTENT COMES FROM THE ADMIN, INJECTED INTO THE PAGE
+
+The page's words are edited in the admin and published from there. This site
+fetches the **published** model on the same poll as maintenance
+(`siteState.js`) and `server.js` **injects it into index.html** as
+`window.__AR_MODEL__` before the document is sent. `src/content/live.ts` is
+what the app reads.
+
+- **Injected rather than fetched by the browser**, so the content arrives WITH
+  the document. A client-side fetch costs a round trip before anything can be
+  drawn and shows an empty page for the length of it.
+- **ESCAPING IS THE WHOLE RISK.** The model is arbitrary text going inside a
+  `<script>` tag, and a literal `</script>` in a body paragraph — something an
+  owner might genuinely write — would close the tag early and leave the rest
+  parsed as markup. Every `<` is escaped as `\u003c`, which is
+  JSON-equivalent and also closes the `<!--` case. **`test:maintenance` pins
+  it** by publishing a paragraph containing `</script><img onerror=…>` and
+  asserting nothing escapes the tag.
+- **Content is held INDEFINITELY once fetched, unlike maintenance.** Maintenance
+  goes stale on purpose — a silent admin must not leave the site down on an old
+  yes. The last thing published is still the right thing to serve however long
+  ago it arrived, so it is kept.
+- **The bundled `MODEL` is the fallback and only that**: a fresh deploy that has
+  not reached the admin, or an admin that has never published. Falling back to it
+  means the site always renders something true rather than nothing.
+- **A malformed model is refused on both sides** — when it is fetched, and again
+  in `live.ts` before it is rendered — because a model the renderer throws on is
+  a blank page.
+- **index.html is composed per request and never cached.** It carries the
+  content, so a cached copy is a stale page that outlives a publish.
+
 ### The other thing that crosses: uploaded files
 
 `files.js` streams `/files/…` from the admin, which is where they are stored.
