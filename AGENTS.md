@@ -140,6 +140,40 @@ authentication is the entire defence. Build it accordingly.
 the content model; this repo renders it. That split is what keeps the public
 build free of everything above.
 
+### The one thing that does cross: maintenance mode
+
+`siteState.js` asks the admin whether the site should be showing the
+maintenance notice, and `maintenance.js` is the notice. Three rules, and the
+first is the one that matters:
+
+1. **IT FAILS OPEN.** Every way of not knowing — `ADMIN_STATE_URL` unset, the
+   admin down, slow, mid-deploy, or answering something this cannot parse —
+   resolves to **show the portfolio**. The admin being unavailable must never
+   be what takes this site down: that is a failure with no symptom anybody
+   would think to look for, on the site whose whole job is being there when
+   someone looks. An answer older than two minutes stops counting, so a
+   silent admin cannot leave the site down on a stale yes either.
+2. **IT POLLS, EVERY 15s, RATHER THAN ASKING PER REQUEST.** A per-request fetch
+   would put the admin's latency and uptime on every page load, which is the
+   coupling rule 1 exists to prevent — and it would arrive after the page had
+   already been served 200, so the notice could not be a real 503.
+3. **`/healthz` IS EXEMPT FROM MAINTENANCE.** Railway rolls a deploy back when
+   its health check fails, so a maintenance mode covering that path would
+   refuse to deploy at exactly the moment it was wanted. `railway.json` points
+   there for that reason.
+
+The notice is **self-contained HTML** — no bundle, no stylesheet, no font, no
+image, no request of its own. It is the one page that has to render when
+something else is not. It is a **copy** of the admin's `MaintenanceScreen`, not
+an import: two deployments, and neither may import from the other.
+
+The poll sends `x-ar-site: portfolio` so the admin can report honestly whether
+the site is actually asking. **Keep that header** — without it the admin's
+"the site checked in" reading stops meaning the site.
+
+`npm run test:maintenance` drives all of it against a real server with a
+stand-in admin, and is part of `npm run verify`.
+
 ## Deployment
 
 **Railway**, building and deploying from `main` (owner decision — everything in
@@ -162,8 +196,13 @@ because each of its four rules is load-bearing:
 - **Paths are resolved and checked to be inside `dist/`**, so a crafted URL
   cannot read files above the web root.
 
-`railway.json` holds the build and start commands and a health check on `/`.
-`.nvmrc` pins Node 20.
+`railway.json` holds the build and start commands and a health check on
+`/healthz` — see the maintenance rules above for why it is not `/`. `.nvmrc`
+pins Node 20.
+
+**One variable**: `ADMIN_STATE_URL` =
+`https://admin.andrewramey.com/api/public/site-state`. Unset, maintenance mode
+is simply off, which is the fail-open default.
 
 **A failed build is harmless — a failed start is an outage.** Railway keeps the
 previous version live when a build fails, but a build that succeeds and then
@@ -176,8 +215,9 @@ and kept only so the site can be served from Cloudflare Pages without changes �
 
 ## Verifying changes
 
-`npm run verify` — typecheck then build. Run it before pushing; a failed build
-means the site does not update, and the previous version stays live.
+`npm run verify` — typecheck, build, `test:maintenance`. Run it before pushing;
+a failed build means the site does not update, and the previous version stays
+live.
 
 ## Conventions
 

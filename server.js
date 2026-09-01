@@ -17,12 +17,21 @@
 //      turns a broken asset into a confusing parse error instead.
 //   4. Paths are resolved and checked to be inside dist/, so a crafted URL
 //      cannot read files above the web root.
+//   5. /healthz answers 200 unconditionally, INCLUDING while the site is down
+//      for maintenance. Railway rolls a deploy back when its health check
+//      fails, so a maintenance mode that covered this path would refuse to
+//      deploy at exactly the moment it was needed.
+//   6. While maintenance is on, every other path gets the notice — see
+//      siteState.js for the rule that decides, and maintenance.js for why it
+//      is a 503 rather than a 200.
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { maintenanceOn, startPolling } from './siteState.js';
+import { sendMaintenance } from './maintenance.js';
 
 const ROOT = resolve(fileURLToPath(new URL('./dist', import.meta.url)));
 const PORT = Number(process.env.PORT) || 8080;
@@ -91,6 +100,21 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  const reqPath = (req.url ?? '/').split('?')[0];
+
+  // Rule 5. Exempt from everything below, deliberately.
+  if (reqPath === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end('ok');
+    return;
+  }
+
+  // Rule 6.
+  if (maintenanceOn()) {
+    sendMaintenance(req, res);
+    return;
+  }
+
   const urlPath = req.url === '/' ? '/index.html' : req.url;
   const path = resolvePath(urlPath);
 
@@ -122,6 +146,8 @@ const server = createServer(async (req, res) => {
   // page. Its own NotFound component answers for the ones that are not.
   send(res, 200, shell, found.size);
 });
+
+startPolling();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Serving ${ROOT} on :${PORT}`);

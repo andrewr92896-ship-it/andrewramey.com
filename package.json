@@ -8,8 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run build",
-    "start": "node server.js"
+    "verify": "npm run typecheck && npm run build && npm run test:maintenance",
+    "start": "node server.js",
+    "test:maintenance": "node scripts/maintenance.test.mjs"
   },
   "dependencies": {
     "playwright": "^1.62.1",
