@@ -77,7 +77,7 @@ export type FieldStyle = {
  * the middle of the hobbies grid, a video under the timeline, an image beside
  * the about text. The section decides the LAYOUT; the kind decides the BOX.
  */
-export type ItemKind = 'card' | 'credential' | 'image' | 'video' | 'text';
+export type ItemKind = 'card' | 'credential' | 'image' | 'video' | 'text' | 'callout';
 
 /** Which typography and field list a block kind borrows. */
 export const BLOCK_OWNER: Record<ItemKind, string> = {
@@ -86,6 +86,9 @@ export const BLOCK_OWNER: Record<ItemKind, string> = {
   image: 'image',
   video: 'video',
   text: 'about',
+  // A boxed note with a heading, in the gold highlight the band uses. Added
+  // for parity with the VTS Site Editor, which has one (2026-09).
+  callout: 'callout',
 };
 
 /** The owner an item renders as: its own kind's, else the section's. */
@@ -238,6 +241,7 @@ export const DEFAULT_FIELDS: Record<string, string[]> = {
   /** The two media blocks: the thing itself, then a caption. */
   image: ['image', 'title'],
   video: ['video', 'title'],
+  callout: ['title', 'body'],
 };
 
 /**

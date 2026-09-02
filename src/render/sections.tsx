@@ -107,6 +107,9 @@ function Box({
   if (item.kind === 'credential') {
     tone = 'outline';
     mark = true;
+  } else if (item.kind === 'callout') {
+    tone = 'gold';
+    mark = false;
   } else if (item.kind) {
     tone = 'panel';
     mark = false;
