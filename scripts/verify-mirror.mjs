@@ -36,6 +36,7 @@ const FILES = [
   'src/render/fields.tsx',
   'src/render/sections.tsx',
   'src/render/Portfolio.tsx',
+  'src/render/viewer.tsx',
   'src/styles.css',
 ];
 

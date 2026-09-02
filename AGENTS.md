@@ -225,6 +225,32 @@ what the app reads.
 - **index.html is composed per request and never cached.** It carries the
   content, so a cached copy is a stale page that outlives a publish.
 
+### A LINK'S BEHAVIOUR IS PART OF THE CONTENT
+
+`LinkBehavior` on a button, a card link or a band's call to action decides what
+a click does: **open**, **download**, or **preview**. Absent means open, which is
+what every link did before this existed.
+
+**Preview is why this exists.** A résumé that downloads on click makes a reader
+leave the page and go and find a file manager to read one page of PDF.
+`render/viewer.tsx` shows it in place with a download arrow in the corner, so
+they stay on the site.
+
+- **A preview renders a BUTTON, never an anchor.** An anchor that does not
+  navigate lies to a screen reader and to anybody who middle-clicks it.
+- **The viewer is a context provider**, because a link can be almost anywhere in
+  the tree — hero, card, band — and threading an opener through every section,
+  box and field is how one of them ends up without it. It lives in its own
+  module so `fields.tsx` can consume it and `Portfolio.tsx` can provide it
+  without importing each other. It replaced the image-only lightbox.
+- **`download` works because uploaded files are same-origin**, served from this
+  domain through the proxy. It also overrides the `Content-Disposition` the
+  admin sent, which is how one file can both preview inline and download on
+  demand.
+- **A PDF falls back to a card on a TOUCH device, not a narrow one.** iOS renders
+  the first page in an iframe and will not scroll it. Width was the first test
+  and was wrong both ways — see the admin's AGENTS.md.
+
 ### The other thing that crosses: uploaded files
 
 `files.js` streams `/files/…` from the admin, which is where they are stored.

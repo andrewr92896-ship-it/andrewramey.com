@@ -29,10 +29,27 @@ export type SectionType =
   | 'about'
   | 'band';
 
+/**
+ * What happens when a link is clicked.
+ *
+ *   link      go there. An http(s) address opens in a new tab, as it always did.
+ *   download  save the file rather than opening it.
+ *   preview   open it in a viewer on the page, WITH a download button in it.
+ *
+ * Absent means `link`, which is exactly what every link did before this
+ * existed — so nothing already written changed behaviour when it landed.
+ *
+ * `preview` is the one worth explaining: a résumé that downloads on click makes
+ * a reader leave the page and open a file manager to read one page. Showing it
+ * in place, with Download still one press away, keeps them on the site.
+ */
+export type LinkBehavior = 'link' | 'download' | 'preview';
+
 export type Button = {
   label: string;
   href: string;
   variant: 'solid' | 'ghost';
+  behavior?: LinkBehavior;
 };
 
 /** Per-field typography overrides, written by the editor's format ribbon. */
@@ -64,9 +81,13 @@ export type Item = {
   credential?: string;
   href?: string;
   linkLabel?: string;
+  /** How this box's own link behaves. See LinkBehavior. */
+  behavior?: LinkBehavior;
   tags?: string[];
   buttons?: Button[];
 
+  /** The image's address — usually /files/<something> from File Uploads. */
+  imgSrc?: string;
   imgId?: string;
   /** px, 100–420. */
   imgH?: number;
@@ -121,6 +142,7 @@ export type Section = {
 
   ctaLabel?: string;
   ctaHref?: string;
+  ctaBehavior?: LinkBehavior;
 
   items: Item[];
 

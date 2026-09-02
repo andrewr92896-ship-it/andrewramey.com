@@ -21,10 +21,9 @@ import {
   fieldsFor,
   type Item,
   type Section,
+  type LinkBehavior,
 } from '../content/types';
 import { Btn, Chips, Field, hasContent, typoFor } from './fields';
-
-type Ctx = { onOpenImage: (src: string) => void };
 
 // ---------------------------------------------------------------- box
 
@@ -64,20 +63,18 @@ function Fields({
   item,
   ids,
   gap,
-  ctx,
 }: {
   owner: string;
   item: Item;
   ids: string[];
   gap: number;
-  ctx: Ctx;
 }) {
   const shown = ids.filter((id) => hasContent(item, id));
   if (!shown.length) return null;
   return (
     <div style={{ display: 'grid', gap, minWidth: 0 }}>
       {shown.map((id) => (
-        <Field key={id} owner={owner} item={item} id={id} onOpenImage={ctx.onOpenImage} />
+        <Field key={id} owner={owner} item={item} id={id} />
       ))}
     </div>
   );
@@ -86,13 +83,11 @@ function Fields({
 function Box({
   owner,
   item,
-  ctx,
   tone,
   mark,
 }: {
   owner: string;
   item: Item;
-  ctx: Ctx;
   tone: keyof typeof TONES;
   mark?: boolean;
 }) {
@@ -107,14 +102,14 @@ function Box({
           ◆
         </span>
       )}
-      <Fields owner={owner} item={item} ids={ids} gap={10} ctx={ctx} />
+      <Fields owner={owner} item={item} ids={ids} gap={10} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------- header
 
-function SectionHeader({ s, ctx }: { s: Section; ctx: Ctx }) {
+function SectionHeader({ s }: { s: Section }) {
   const ids = (s.fields ?? DEFAULT_FIELDS.header).filter((id) => {
     const v = s[id];
     return typeof v === 'string' && v.trim() !== '';
@@ -127,7 +122,6 @@ function SectionHeader({ s, ctx }: { s: Section; ctx: Ctx }) {
           {String(s[id])}
         </p>
       ))}
-      {ctx ? null : null}
     </div>
   );
 }
@@ -142,7 +136,7 @@ function gridCols(s: Section, defaultMin: number): string {
 
 // ---------------------------------------------------------------- types
 
-function Hero({ s, ctx }: { s: Section; ctx: Ctx }) {
+function Hero({ s }: { s: Section }) {
   const ids = fieldsFor(s as unknown as Item, DEFAULT_FIELDS.hero);
   return (
     <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
@@ -169,12 +163,11 @@ function Hero({ s, ctx }: { s: Section; ctx: Ctx }) {
           </p>
         );
       })}
-      {ctx ? null : null}
     </div>
   );
 }
 
-function Cards({ s, ctx, certs }: { s: Section; ctx: Ctx; certs?: boolean }) {
+function Cards({ s, certs }: { s: Section; certs?: boolean }) {
   return (
     <div
       style={{
@@ -188,7 +181,7 @@ function Cards({ s, ctx, certs }: { s: Section; ctx: Ctx; certs?: boolean }) {
           key={i}
           owner={certs ? 'certs' : 'cards'}
           item={it}
-          ctx={ctx}
+         
           tone={certs ? 'outline' : 'panel'}
           mark={certs}
         />
@@ -197,7 +190,7 @@ function Cards({ s, ctx, certs }: { s: Section; ctx: Ctx; certs?: boolean }) {
   );
 }
 
-function Tiers({ s, ctx }: { s: Section; ctx: Ctx }) {
+function Tiers({ s }: { s: Section }) {
   return (
     <div style={{ display: 'grid', gap: s.gap ?? 16 }}>
       {s.items.map((it, i) => {
@@ -217,8 +210,8 @@ function Tiers({ s, ctx }: { s: Section; ctx: Ctx }) {
             }}
             className="split"
           >
-            <Fields owner="tiers" item={it} ids={colA} gap={8} ctx={ctx} />
-            <Fields owner="tiers" item={it} ids={colB} gap={10} ctx={ctx} />
+            <Fields owner="tiers" item={it} ids={colA} gap={8} />
+            <Fields owner="tiers" item={it} ids={colB} gap={10} />
           </div>
         );
       })}
@@ -226,7 +219,7 @@ function Tiers({ s, ctx }: { s: Section; ctx: Ctx }) {
   );
 }
 
-function Timeline({ s, ctx }: { s: Section; ctx: Ctx }) {
+function Timeline({ s }: { s: Section }) {
   return (
     <div style={{ display: 'grid', gap: s.gap ?? 0 }}>
       {s.items.map((it, i) => {
@@ -246,8 +239,8 @@ function Timeline({ s, ctx }: { s: Section; ctx: Ctx }) {
             }}
             className="split"
           >
-            <Fields owner="timeline" item={it} ids={colA} gap={6} ctx={ctx} />
-            <Fields owner="timeline" item={it} ids={colB} gap={10} ctx={ctx} />
+            <Fields owner="timeline" item={it} ids={colA} gap={6} />
+            <Fields owner="timeline" item={it} ids={colB} gap={10} />
           </div>
         );
       })}
@@ -255,7 +248,7 @@ function Timeline({ s, ctx }: { s: Section; ctx: Ctx }) {
   );
 }
 
-function About({ s, ctx }: { s: Section; ctx: Ctx }) {
+function About({ s }: { s: Section }) {
   const portrait = (
     <div style={{ minWidth: 0, ...(s.side === 'right' ? { order: 2 } : {}) }}>
       <div
@@ -324,7 +317,7 @@ function About({ s, ctx }: { s: Section; ctx: Ctx }) {
             item={it}
             ids={fieldsFor(it, DEFAULT_FIELDS.about)}
             gap={10}
-            ctx={ctx}
+           
           />
         ))}
       </div>
@@ -332,7 +325,7 @@ function About({ s, ctx }: { s: Section; ctx: Ctx }) {
   );
 }
 
-function Band({ s, ctx }: { s: Section; ctx: Ctx }) {
+function Band({ s }: { s: Section }) {
   return (
     <div
       style={{
@@ -354,14 +347,21 @@ function Band({ s, ctx }: { s: Section; ctx: Ctx }) {
           return (
             <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
               {ids.map((id) => (
-                <Field key={id} owner="band" item={it} id={id} onOpenImage={ctx.onOpenImage} />
+                <Field key={id} owner="band" item={it} id={id} />
               ))}
             </div>
           );
         })}
       </div>
       {s.ctaLabel && (
-        <Btn b={{ label: s.ctaLabel, href: s.ctaHref || '#', variant: 'solid' }} />
+        <Btn
+          b={{
+            label: s.ctaLabel,
+            href: s.ctaHref || '#',
+            variant: 'solid',
+            behavior: s.ctaBehavior as LinkBehavior | undefined,
+          }}
+        />
       )}
     </div>
   );
@@ -369,7 +369,7 @@ function Band({ s, ctx }: { s: Section; ctx: Ctx }) {
 
 // ---------------------------------------------------------------- entry
 
-export function SectionView({ s, ctx }: { s: Section; ctx: Ctx }) {
+export function SectionView({ s }: { s: Section }) {
   const pad = PAD[s.pad ?? 'normal'];
 
   if (s.type === 'hero') {
@@ -378,7 +378,7 @@ export function SectionView({ s, ctx }: { s: Section; ctx: Ctx }) {
         id={s.id}
         style={{ padding: `clamp(48px,8vw,104px) 0 ${Math.round(pad * 0.35)}px`, scrollMarginTop: 90 }}
       >
-        <Hero s={s} ctx={ctx} />
+        <Hero s={s} />
       </section>
     );
   }
@@ -389,9 +389,9 @@ export function SectionView({ s, ctx }: { s: Section; ctx: Ctx }) {
     return (
       <section id={s.id} style={{ scrollMarginTop: 90 }}>
         <div style={{ padding: `${pad}px 0 ${Math.round(pad * 0.35)}px` }}>
-          <SectionHeader s={s} ctx={ctx} />
+          <SectionHeader s={s} />
         </div>
-        <Band s={{ ...s, pad: 'compact' }} ctx={ctx} />
+        <Band s={{ ...s, pad: 'compact' }} />
       </section>
     );
   }
@@ -399,13 +399,13 @@ export function SectionView({ s, ctx }: { s: Section; ctx: Ctx }) {
   return (
     <section id={s.id} style={{ scrollMarginTop: 90 }}>
       <div style={{ padding: `${pad}px 0 ${Math.round(pad * 0.35)}px` }}>
-        <SectionHeader s={s} ctx={ctx} />
+        <SectionHeader s={s} />
       </div>
-      {s.type === 'cards' && <Cards s={s} ctx={ctx} />}
-      {s.type === 'certs' && <Cards s={s} ctx={ctx} certs />}
-      {s.type === 'tiers' && <Tiers s={s} ctx={ctx} />}
-      {s.type === 'timeline' && <Timeline s={s} ctx={ctx} />}
-      {s.type === 'about' && <About s={s} ctx={ctx} />}
+      {s.type === 'cards' && <Cards s={s} />}
+      {s.type === 'certs' && <Cards s={s} certs />}
+      {s.type === 'tiers' && <Tiers s={s} />}
+      {s.type === 'timeline' && <Timeline s={s} />}
+      {s.type === 'about' && <About s={s} />}
     </section>
   );
 }

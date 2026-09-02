@@ -16,6 +16,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { C, GOLD_GRADIENT, tint } from '../theme/tokens';
 import { fieldKind, type Button, type FieldStyle, type Item } from '../content/types';
+import { linkProps, useFileViewer } from './viewer';
 
 /**
  * Typography per (owner, field kind).
@@ -91,21 +92,34 @@ export function typoFor(owner: string, id: string, styles?: Record<string, Field
 
 export function Btn({ b }: { b: Button }) {
   const solid = b.variant === 'solid';
+  const openFile = useFileViewer();
+  const style: CSSProperties = {
+    display: 'inline-block',
+    padding: '.85rem 1.4rem',
+    borderRadius: '.6rem',
+    textDecoration: 'none',
+    font: `${solid ? 700 : 500} .98rem/1 ${C.sans}`,
+    ...(solid
+      ? { background: GOLD_GRADIENT, color: C.goldText, border: '1px solid transparent' }
+      : { background: 'transparent', color: C.text, border: `1px solid ${C.line2}` }),
+  };
+
+  // A preview is a BUTTON, not an anchor. An anchor that does not navigate
+  // lies to a screen reader and to anybody who middle-clicks it.
+  if (b.behavior === 'preview' && b.href) {
+    return (
+      <button
+        type="button"
+        onClick={() => openFile({ src: b.href, label: b.label })}
+        style={{ ...style, cursor: 'pointer', fontFamily: C.sans }}
+      >
+        {b.label}
+      </button>
+    );
+  }
+
   return (
-    <a
-      href={b.href}
-      {...(/^https?:/.test(b.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      style={{
-        display: 'inline-block',
-        padding: '.85rem 1.4rem',
-        borderRadius: '.6rem',
-        textDecoration: 'none',
-        font: `${solid ? 700 : 500} .98rem/1 ${C.sans}`,
-        ...(solid
-          ? { background: GOLD_GRADIENT, color: C.goldText, border: '1px solid transparent' }
-          : { background: 'transparent', color: C.text, border: `1px solid ${C.line2}` }),
-      }}
-    >
+    <a {...linkProps(b.href, b.behavior)} style={style}>
       {b.label}
     </a>
   );
@@ -191,15 +205,29 @@ export function Bullets({ tags }: { tags?: string[] }) {
 }
 
 export function CardLink({ item }: { item: Item }) {
+  const openFile = useFileViewer();
   if (!item.href) return null;
-  const external = /^https?:/.test(item.href);
+  const style: CSSProperties = {
+    font: `600 .86rem/1.5 ${C.sans}`,
+    color: C.gold,
+    textDecoration: 'none',
+  };
+  const label = `${item.linkLabel || 'Open'} →`;
+
+  if (item.behavior === 'preview') {
+    return (
+      <button
+        type="button"
+        onClick={() => openFile({ src: item.href as string, label: item.linkLabel })}
+        style={{ ...style, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: C.sans }}
+      >
+        {label}
+      </button>
+    );
+  }
   return (
-    <a
-      href={item.href}
-      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      style={{ font: `600 .86rem/1.5 ${C.sans}`, color: C.gold, textDecoration: 'none' }}
-    >
-      {item.linkLabel || 'Open'} →
+    <a {...linkProps(item.href, item.behavior)} style={style}>
+      {label}
     </a>
   );
 }
@@ -254,14 +282,9 @@ export function BandValue({ item, style }: { item: Item; style: CSSProperties })
   );
 }
 
-/** A preview image. Clicking opens the lightbox. */
-export function Preview({
-  item,
-  onOpen,
-}: {
-  item: Item;
-  onOpen: (src: string) => void;
-}) {
+/** A preview image. Clicking opens it in the file viewer. */
+export function Preview({ item }: { item: Item }) {
+  const openFile = useFileViewer();
   const src = typeof item.imgSrc === 'string' ? item.imgSrc : '';
   const h = item.imgH ?? 190;
   if (!src) {
@@ -289,7 +312,7 @@ export function Preview({
   return (
     <button
       type="button"
-      onClick={() => onOpen(src)}
+      onClick={() => openFile({ src, label: typeof item.title === 'string' ? item.title : undefined })}
       style={{
         display: 'block',
         width: '100%',
@@ -326,17 +349,16 @@ export type FieldProps = {
   owner: string;
   item: Item;
   id: string;
-  onOpenImage: (src: string) => void;
 };
 
 /** One field of a box, dispatched on its kind. */
-export function Field({ owner, item, id, onOpenImage }: FieldProps): ReactNode {
+export function Field({ owner, item, id }: FieldProps): ReactNode {
   const kind = fieldKind(id);
   const style = typoFor(owner, id, item.styles);
 
   switch (kind) {
     case 'image':
-      return <Preview item={item} onOpen={onOpenImage} />;
+      return <Preview item={item} />;
     case 'tags':
       return owner === 'timeline' ? (
         <Bullets tags={item[id] as string[]} />

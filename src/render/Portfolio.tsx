@@ -13,10 +13,11 @@
 // fails the OTHER repo until its copy is brought across too. That is what makes
 // drift impossible to ship rather than merely discouraged.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { C, COLUMN, PAGE_BG, tint } from '../theme/tokens';
 import type { Model, Nav } from '../content/types';
 import { SectionView } from './sections';
+import { FileViewerProvider } from './viewer';
 
 /**
  * The portfolio renderer.
@@ -171,79 +172,23 @@ function Footer() {
   );
 }
 
-function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 70,
-        background: 'rgba(3,8,20,.92)',
-        display: 'grid',
-        placeItems: 'center',
-        padding: 24,
-      }}
-    >
-      <img
-        src={src}
-        alt=""
-        style={{
-          maxWidth: '100%',
-          maxHeight: '100%',
-          borderRadius: 10,
-          border: `1px solid ${C.line2}`,
-        }}
-      />
-      <button
-        type="button"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 20,
-          right: 20,
-          padding: '10px 16px',
-          borderRadius: 8,
-          border: `1px solid ${C.line2}`,
-          background: 'transparent',
-          color: C.text,
-          font: `500 .88rem/1 ${C.sans}`,
-          cursor: 'pointer',
-        }}
-      >
-        Close
-      </button>
-    </div>
-  );
-}
-
 export default function Portfolio({ model }: { model: Model }) {
-  const [lightbox, setLightbox] = useState('');
-  const onOpenImage = useCallback((src: string) => setLightbox(src), []);
-  const ctx = { onOpenImage };
-
   return (
-    <div style={{ minHeight: '100%', background: PAGE_BG }}>
-      <Header nav={model.nav} />
-      <main style={{ width: COLUMN, margin: '0 auto', padding: '0 0 64px' }}>
-        {model.sections
-          .filter((s) => !s.hidden)
-          .map((s) => (
-            <SectionView key={s.id} s={s} ctx={ctx} />
-          ))}
-        <Footer />
-      </main>
-      {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox('')} />}
-    </div>
+    // Everything is inside the provider because a link that opens a file can be
+    // almost anywhere in the tree — a hero button, a card, a band. See
+    // render/viewer.tsx.
+    <FileViewerProvider>
+      <div style={{ minHeight: '100%', background: PAGE_BG }}>
+        <Header nav={model.nav} />
+        <main style={{ width: COLUMN, margin: '0 auto', padding: '0 0 64px' }}>
+          {model.sections
+            .filter((s) => !s.hidden)
+            .map((s) => (
+              <SectionView key={s.id} s={s} />
+            ))}
+          <Footer />
+        </main>
+      </div>
+    </FileViewerProvider>
   );
 }
