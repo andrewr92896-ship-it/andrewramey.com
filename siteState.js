@@ -18,7 +18,35 @@
 // real 503 — a request-time answer would arrive after the page had already been
 // served 200, leaving a crawler recording the notice as the site's content.
 
-const URL_ = process.env.ADMIN_STATE_URL ?? '';
+/**
+ * BOTH ENDPOINTS ARE DERIVED FROM THE ORIGIN, NOT FROM THE PATH THAT WAS SET.
+ *
+ * `ADMIN_STATE_URL` used to be fetched verbatim for the maintenance flag while
+ * the content URL was derived by trimming its tail. That made the two disagree
+ * about what a slightly-off value meant: a trailing slash, say, still produced
+ * the right content URL — so the admin registered the site as checking in — and
+ * a 401 on the maintenance URL, which is silently caught. The link looked
+ * healthy on screen while the switch did nothing, which is the worst shape a
+ * configuration error can take.
+ *
+ * Reading the origin makes every reasonable value work — with or without the
+ * path, with or without a trailing slash — and makes the two requests
+ * impossible to point at different services.
+ */
+function adminOrigin() {
+  const raw = process.env.ADMIN_STATE_URL ?? '';
+  if (!raw) return '';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    console.warn(`[site-state] ADMIN_STATE_URL is not a URL: ${raw}`);
+    return '';
+  }
+}
+
+const ORIGIN = adminOrigin();
+const URL_ = ORIGIN ? `${ORIGIN}/api/public/site-state` : '';
+const CONTENT_URL = ORIGIN ? `${ORIGIN}/api/public/content` : '';
 const POLL_MS = 15_000;
 const TIMEOUT_MS = 4_000;
 
@@ -67,7 +95,7 @@ export function maintenanceOn() {
 
 async function pollContent() {
   try {
-    const res = await fetch(`${URL_.replace(/\/site-state\/?$/, '')}/content`, {
+    const res = await fetch(CONTENT_URL, {
       headers: { accept: 'application/json', 'x-ar-site': 'portfolio' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -109,7 +137,10 @@ async function poll() {
     // Deliberately not clearing `last`: one failed request is not a state
     // change, and STALE_MS is what decides when silence stops counting.
     if (logged !== 'fail') {
-      console.warn(`[site-state] could not reach the admin (${err.message}) — the site stays up`);
+      console.warn(
+        `[site-state] could not read ${URL_} (${err.message}) — the site stays up, ` +
+          'and the maintenance switch will not reach it',
+      );
       logged = 'fail';
     }
   }

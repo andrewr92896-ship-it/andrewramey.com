@@ -51,7 +51,7 @@ let published = {
 
 const admin = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
-  if (path.endsWith('/content')) {
+  if (path === '/api/public/content') {
     if (req.headers['x-ar-site'] === 'portfolio') sawSiteHeader = true;
     if (published.status !== 200) {
       res.writeHead(published.status, { 'Content-Type': 'application/json' });
@@ -72,9 +72,15 @@ const admin = createServer((req, res) => {
     });
     return res.end(blob.body);
   }
-  if (req.headers['x-ar-site'] === 'portfolio') sawSiteHeader = true;
-  res.writeHead(answer.status, { 'Content-Type': 'application/json' });
-  res.end(answer.body);
+  if (path === '/api/public/site-state') {
+    if (req.headers['x-ar-site'] === 'portfolio') sawSiteHeader = true;
+    res.writeHead(answer.status, { 'Content-Type': 'application/json' });
+    return res.end(answer.body);
+  }
+  // Anything else is a 404, like the real admin — which is what makes the
+  // "whatever shape the address was typed in" cases mean something.
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end('{"error":"not found"}');
 });
 await new Promise((r) => admin.listen(4700, r));
 const STATE_URL = 'http://localhost:4700/state';
@@ -145,6 +151,26 @@ await withServer(4702, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
   r = await fetch(`${B}/files/resume.pdf`);
   ok(r.status === 503, 'and files are covered by maintenance too, deliberately', `${r.status}`);
 });
+
+// ---- B2. the address it is pointed at
+console.log('\nB2. WHATEVER SHAPE THE ADDRESS WAS TYPED IN');
+// The value is typed by hand into a hosting dashboard. Every reasonable shape
+// of it has to reach the same two endpoints — the version that fetched the
+// maintenance URL verbatim broke on a trailing slash while the content URL,
+// which was normalized, kept working. The link looked healthy and the switch
+// did nothing.
+answer = { status: 200, body: '{"maintenance":true}' };
+for (const [shape, value] of [
+  ['the full path', 'http://localhost:4700/api/public/site-state'],
+  ['a trailing slash', 'http://localhost:4700/api/public/site-state/'],
+  ['the origin alone', 'http://localhost:4700'],
+  ['some other path', 'http://localhost:4700/whatever'],
+]) {
+  await withServer(4720, { ADMIN_STATE_URL: value }, async (B) => {
+    const r = await fetch(`${B}/`, { headers: { Accept: 'text/html' } });
+    ok(r.status === 503, `${shape} still reads the maintenance setting`, `${r.status}`);
+  });
+}
 
 // ---- C. fail open
 console.log('\nC. FAIL OPEN');
