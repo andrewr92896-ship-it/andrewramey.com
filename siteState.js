@@ -115,12 +115,26 @@ async function poll() {
   }
 }
 
-export function startPolling() {
+/**
+ * THE FIRST POLL IS AWAITED BEFORE THE SERVER LISTENS, and that is the point of
+ * this being async.
+ *
+ * Polling in the background and listening immediately leaves a window — short,
+ * but real — where a freshly deployed process answers requests before it has
+ * asked whether the site is supposed to be down. It fails open during that
+ * window, which is the right default and exactly wrong at the one moment it
+ * matters: a deploy of a site that is meant to be behind the maintenance notice
+ * would show the real page to whoever arrived first.
+ *
+ * It costs at most TIMEOUT_MS on boot, well inside the platform's health-check
+ * window, and it cannot hang: `poll` swallows its own failures.
+ */
+export async function startPolling() {
   if (!URL_) {
     console.log('[site-state] ADMIN_STATE_URL is not set — maintenance mode is off');
     return;
   }
-  void poll();
+  await poll();
   // unref'd: this timer must never be the reason the process stays alive.
   setInterval(poll, POLL_MS).unref();
 }

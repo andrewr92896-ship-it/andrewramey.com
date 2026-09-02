@@ -207,7 +207,10 @@ const server = createServer(async (req, res) => {
   await sendShell(req, res, join(ROOT, 'index.html'));
 });
 
-startPolling();
+// Awaited: see siteState.js. A process that starts serving before it knows
+// whether the site is supposed to be down will show the real page to whoever
+// arrives in that window — which is precisely the deploy where it matters.
+await startPolling();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Serving ${ROOT} on :${PORT}`);
