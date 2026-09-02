@@ -35,7 +35,7 @@ import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { maintenanceOn, publishedContent, startPolling } from './siteState.js';
+import { adminOrigin, lastRead, maintenanceOn, publishedContent, startPolling } from './siteState.js';
 import { sendMaintenance } from './maintenance.js';
 import { serveFile } from './files.js';
 
@@ -161,9 +161,25 @@ const server = createServer(async (req, res) => {
   const reqPath = (req.url ?? '/').split('?')[0];
 
   // Rule 5. Exempt from everything below, deliberately.
+  //
+  // It also REPORTS what the origin currently believes, which makes it the one
+  // page that can settle "the switch is on but the site is up". Because it
+  // answers 200 it is never intercepted by a CDN's serve-stale-on-error
+  // behaviour, so what it says is what this process thinks — the difference
+  // between a poll that is failing and a cache in front that is not obeying.
+  //
+  // Nothing here is private: whether the site is in maintenance is visible to
+  // anybody who loads it, and the admin's own address is already public in
+  // certificate transparency logs.
   if (reqPath === '/healthz') {
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end('ok');
+    const body = JSON.stringify({
+      ok: true,
+      maintenance: maintenanceOn(),
+      admin: adminOrigin() || null,
+      lastReadFromAdmin: lastRead(),
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(body);
     return;
   }
 

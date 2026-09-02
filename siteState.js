@@ -33,7 +33,7 @@
  * path, with or without a trailing slash — and makes the two requests
  * impossible to point at different services.
  */
-function adminOrigin() {
+export function adminOrigin() {
   const raw = process.env.ADMIN_STATE_URL ?? '';
   if (!raw) return '';
   try {
@@ -84,6 +84,17 @@ let content = null;
  */
 export function publishedContent() {
   return content;
+}
+
+/**
+ * What the last read of the admin actually produced — the raw truth, before the
+ * staleness rule is applied. `/healthz` reports it, because "the switch is on
+ * but the site is up" has two completely different causes and this is what
+ * tells them apart.
+ */
+export function lastRead() {
+  if (!last.at) return null;
+  return { maintenance: last.maintenance, secondsAgo: Math.round((Date.now() - last.at) / 1000) };
 }
 
 /** The current answer. Never throws, never blocks, never guesses "yes". */
