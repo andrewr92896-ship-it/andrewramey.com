@@ -225,6 +225,27 @@ what the app reads.
 - **index.html is composed per request and never cached.** It carries the
   content, so a cached copy is a stale page that outlives a publish.
 
+### The `services` section
+
+A list of what Andrew takes on, with a contact strip under it (owner request,
+2026-09). Its own section type rather than a `tiers` section under a different
+heading, because "add a service" and "add a tier" are different acts to the
+person writing the page, and the editor can only offer what the model names.
+
+- **The contact details are on the SECTION, not on each service.** It is one
+  fact about the whole list; per-service fields would be four copies of one
+  address to keep in step. Either may be empty and the strip draws what it has,
+  disappearing entirely when it has neither.
+- **The phone number is a `tel:` link with the punctuation stripped, while the
+  DISPLAYED text is exactly what was typed.** A number written
+  "(330) 555-0134" should keep its shape on the page and still be one tap on a
+  phone. A leading `+` survives, because an international number needs it.
+- **COMPLIANCE APPLIES HERE MORE THAN ANYWHERE.** This is the section that says
+  what is being sold. The hard rules above are unchanged: never "financial
+  advisor", "investment advisor", "portfolio management" or "advisory services",
+  and no performance figures. The footer disclaimer already covers the page —
+  do not write service copy that contradicts it.
+
 ### A LINK'S BEHAVIOUR IS PART OF THE CONTENT
 
 `LinkBehavior` on a button, a card link or a band's call to action decides what

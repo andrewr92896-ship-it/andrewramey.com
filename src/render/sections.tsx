@@ -219,6 +219,90 @@ function Tiers({ s }: { s: Section }) {
   );
 }
 
+/**
+ * A services list, with a way to get in touch under it.
+ *
+ * Its own type rather than a `tiers` section with a different heading, because
+ * "add a service" and "add a tier" are different acts to the person writing the
+ * page, and the editor can only offer what the model names. It also carries the
+ * contact strip, which nothing else does.
+ */
+function Services({ s }: { s: Section }) {
+  return (
+    <div style={{ display: 'grid', gap: s.gap ?? 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols(s, 280), gap: s.gap ?? 16 }}>
+        {s.items.map((it, i) => (
+          <Box key={i} owner="services" item={it} tone={(it.tone as keyof typeof TONES) ?? 'panel'} />
+        ))}
+      </div>
+      <ContactStrip s={s} />
+    </div>
+  );
+}
+
+/**
+ * Email and phone, as links that DO something on the device reading them.
+ *
+ * A phone number as plain text is a number somebody has to retype into a keypad;
+ * `tel:` dials it. The href is stripped to the characters a dialler accepts
+ * while the DISPLAYED text is exactly what was typed — a number written
+ * "(330) 555-0134" should keep its shape on the page and still be one tap.
+ */
+export function ContactStrip({ s }: { s: Section }) {
+  const email = typeof s.contactEmail === 'string' ? s.contactEmail.trim() : '';
+  const phone = typeof s.contactPhone === 'string' ? s.contactPhone.trim() : '';
+  if (!email && !phone) return null;
+
+  // Keep a leading + (international), drop everything a dialler cannot use.
+  const dial = phone.replace(/(?!^\+)[^\d]/g, '');
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 'clamp(12px, 3vw, 28px)',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        padding: BOX_PAD.compact,
+        borderRadius: 10,
+        border: `1px solid ${C.line}`,
+        background: tint('#091633', 0.5),
+      }}
+    >
+      {email && <ContactLink label="Email" value={email} href={`mailto:${email}`} />}
+      {phone && <ContactLink label="Phone" value={phone} href={`tel:${dial}`} />}
+    </div>
+  );
+}
+
+function ContactLink({ label, value, href }: { label: string; value: string; href: string }) {
+  return (
+    <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
+      <span
+        style={{
+          font: `500 .62rem/1.4 ${C.mono}`,
+          letterSpacing: '.16em',
+          textTransform: 'uppercase',
+          color: C.faint,
+        }}
+      >
+        {label}
+      </span>
+      <a
+        href={href}
+        style={{
+          font: `600 .95rem/1.4 ${C.sans}`,
+          color: C.gold,
+          textDecoration: 'none',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {value}
+      </a>
+    </span>
+  );
+}
+
 function Timeline({ s }: { s: Section }) {
   return (
     <div style={{ display: 'grid', gap: s.gap ?? 0 }}>
@@ -406,6 +490,7 @@ export function SectionView({ s }: { s: Section }) {
       {s.type === 'tiers' && <Tiers s={s} />}
       {s.type === 'timeline' && <Timeline s={s} />}
       {s.type === 'about' && <About s={s} />}
+      {s.type === 'services' && <Services s={s} />}
     </section>
   );
 }

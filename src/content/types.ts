@@ -27,6 +27,7 @@ export type SectionType =
   | 'tiers'
   | 'timeline'
   | 'about'
+  | 'services'
   | 'band';
 
 /**
@@ -144,6 +145,17 @@ export type Section = {
   ctaHref?: string;
   ctaBehavior?: LinkBehavior;
 
+  /**
+   * A way to get in touch, shown under a services list.
+   *
+   * On the SECTION rather than as an item, because it is one fact about the
+   * whole list — a per-service email would be four copies of one address to
+   * keep in step. Either may be left empty; the strip draws what it has and
+   * disappears entirely when it has neither.
+   */
+  contactEmail?: string;
+  contactPhone?: string;
+
   items: Item[];
 
   [key: string]: unknown;
@@ -183,6 +195,7 @@ export const DEFAULT_FIELDS: Record<string, string[]> = {
   tiers: ['title', 'body', 'tags'],
   timeline: ['meta', 'place', 'title', 'body', 'tags'],
   about: ['body'],
+  services: ['title', 'meta', 'body', 'tags'],
   band: ['meta', 'title'],
 };
 

@@ -46,6 +46,16 @@ const TYPO: Record<string, Record<string, CSSProperties>> = {
     meta: { font: `500 .72rem/1.5 ${C.mono}`, letterSpacing: '.12em', color: C.faint },
     body: { font: `400 .88rem/1.6 ${C.sans}`, color: C.muted },
   },
+  services: {
+    title: { font: `700 1.02rem/1.35 ${C.sans}`, color: C.text },
+    meta: {
+      font: `500 .68rem/1.5 ${C.mono}`,
+      letterSpacing: '.14em',
+      textTransform: 'uppercase',
+      color: C.gold,
+    },
+    body: { font: `400 .93rem/1.7 ${C.sans}`, color: C.muted },
+  },
   tiers: {
     title: { font: `500 .76rem/1.5 ${C.mono}`, letterSpacing: '.16em', textTransform: 'uppercase', color: C.gold },
     body: { font: `400 .84rem/1.6 ${C.sans}`, color: C.faint },
