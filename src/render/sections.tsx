@@ -19,6 +19,7 @@ import {
   DEFAULT_FIELDS,
   fieldKind,
   fieldsFor,
+  itemOwner,
   type Item,
   type Section,
   type LinkBehavior,
@@ -80,29 +81,83 @@ function Fields({
   );
 }
 
+/**
+ * One box.
+ *
+ * `sectionOwner` is what the section holds; an item carrying its own `kind`
+ * renders as THAT instead, with the look that kind has everywhere else on the
+ * site — a credential is dashed gold with the mark wherever it sits. `span` is
+ * off inside a stacked layout: `grid-column: span 2` in a one-column grid does
+ * not widen the box, it conjures a second column and breaks the stack.
+ */
 function Box({
-  owner,
+  sectionOwner,
   item,
   tone,
   mark,
+  span = true,
 }: {
-  owner: string;
+  sectionOwner: string;
   item: Item;
   tone: keyof typeof TONES;
   mark?: boolean;
+  span?: boolean;
 }) {
+  const owner = itemOwner(item, sectionOwner);
+  if (item.kind === 'credential') {
+    tone = 'outline';
+    mark = true;
+  } else if (item.kind) {
+    tone = 'panel';
+    mark = false;
+  }
   const ids = fieldsFor(item, DEFAULT_FIELDS[owner] ?? []);
   return (
-    <div style={{ ...boxStyle(item, tone), ...spanStyle(item) }}>
+    <div style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}>
       {mark && (
         <span
           aria-hidden="true"
-          style={{ position: 'absolute', top: 14, right: 16, color: tint(C.gold, 0.55), fontSize: 12 }}
+          style={{
+            position: 'absolute',
+            top: 14,
+            right: 16,
+            color: tint(C.gold, 0.55),
+            fontSize: 12,
+          }}
         >
           ◆
         </span>
       )}
       <Fields owner={owner} item={item} ids={ids} gap={10} />
+    </div>
+  );
+}
+
+/** An item is native when it carries no kind — it is what the section holds. */
+const native = (it: Item) => !it.kind;
+
+/**
+ * The blocks a section holds that are NOT its own kind of thing, as a grid.
+ *
+ * Used by the layouts that have one shape for their own items — chips, band
+ * lines — so an image or a video added there still has somewhere sensible to
+ * land, under the native content, rather than being dropped.
+ */
+function Blocks({ s, sectionOwner }: { s: Section; sectionOwner: string }) {
+  const extra = s.items.filter((it) => !native(it));
+  if (!extra.length) return null;
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
+        gap: 14,
+        marginTop: 18,
+      }}
+    >
+      {extra.map((it, i) => (
+        <Box key={i} sectionOwner={sectionOwner} item={it} tone="panel" />
+      ))}
     </div>
   );
 }
@@ -143,7 +198,8 @@ function Hero({ s }: { s: Section }) {
       {ids.map((id) => {
         const kind = fieldKind(id);
         if (kind === 'chips') {
-          return s.items.length ? <Chips key={id} items={s.items} /> : null;
+          const chips = s.items.filter(native);
+          return chips.length ? <Chips key={id} items={chips} /> : null;
         }
         if (kind === 'buttons') {
           const list = s.buttons ?? [];
@@ -163,6 +219,7 @@ function Hero({ s }: { s: Section }) {
           </p>
         );
       })}
+      <Blocks s={s} sectionOwner="hero" />
     </div>
   );
 }
@@ -179,9 +236,8 @@ function Cards({ s, certs }: { s: Section; certs?: boolean }) {
       {s.items.map((it, i) => (
         <Box
           key={i}
-          owner={certs ? 'certs' : 'cards'}
+          sectionOwner={certs ? 'certs' : 'cards'}
           item={it}
-         
           tone={certs ? 'outline' : 'panel'}
           mark={certs}
         />
@@ -194,6 +250,8 @@ function Tiers({ s }: { s: Section }) {
   return (
     <div style={{ display: 'grid', gap: s.gap ?? 16 }}>
       {s.items.map((it, i) => {
+        if (!native(it))
+          return <Box key={i} sectionOwner="tiers" item={it} tone="panel" span={false} />;
         const ids = fieldsFor(it, DEFAULT_FIELDS.tiers);
         const colA = ids.filter((f) => ['title', 'body', 'image'].includes(fieldKind(f)));
         const colB = ids.filter((f) => !['title', 'body', 'image'].includes(fieldKind(f)));
@@ -232,7 +290,7 @@ function Services({ s }: { s: Section }) {
     <div style={{ display: 'grid', gap: s.gap ?? 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: gridCols(s, 280), gap: s.gap ?? 16 }}>
         {s.items.map((it, i) => (
-          <Box key={i} owner="services" item={it} tone={(it.tone as keyof typeof TONES) ?? 'panel'} />
+          <Box key={i} sectionOwner="services" item={it} tone="panel" />
         ))}
       </div>
       <ContactStrip s={s} />
@@ -307,6 +365,13 @@ function Timeline({ s }: { s: Section }) {
   return (
     <div style={{ display: 'grid', gap: s.gap ?? 0 }}>
       {s.items.map((it, i) => {
+        if (!native(it)) {
+          return (
+            <div key={i} style={{ padding: '24px 0', borderTop: `1px solid ${C.line}` }}>
+              <Box sectionOwner="timeline" item={it} tone="panel" span={false} />
+            </div>
+          );
+        }
         const ids = fieldsFor(it, DEFAULT_FIELDS.timeline);
         const colA = ids.filter((f) => ['meta', 'place'].includes(fieldKind(f)));
         const colB = ids.filter((f) => !['meta', 'place'].includes(fieldKind(f)));
@@ -394,16 +459,19 @@ function About({ s }: { s: Section }) {
     >
       {portrait}
       <div style={{ display: 'grid', gap: 16, minWidth: 0 }}>
-        {s.items.map((it, i) => (
-          <Fields
-            key={i}
-            owner="about"
-            item={it}
-            ids={fieldsFor(it, DEFAULT_FIELDS.about)}
-            gap={10}
-           
-          />
-        ))}
+        {s.items.map((it, i) =>
+          native(it) ? (
+            <Fields
+              key={i}
+              owner="about"
+              item={it}
+              ids={fieldsFor(it, DEFAULT_FIELDS.about)}
+              gap={10}
+            />
+          ) : (
+            <Box key={i} sectionOwner="about" item={it} tone="panel" span={false} />
+          ),
+        )}
       </div>
     </div>
   );
@@ -426,10 +494,13 @@ function Band({ s }: { s: Section }) {
       }}
     >
       <div style={{ display: 'grid', gap: s.gap ?? 8, minWidth: 0 }}>
-        {s.items.map((it, i) => {
+        {s.items.filter(native).map((it, i) => {
           const ids = fieldsFor(it, DEFAULT_FIELDS.band).filter((id) => hasContent(it, id));
           return (
-            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
+            <div
+              key={i}
+              style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}
+            >
               {ids.map((id) => (
                 <Field key={id} owner="band" item={it} id={id} />
               ))}
@@ -460,7 +531,10 @@ export function SectionView({ s }: { s: Section }) {
     return (
       <section
         id={s.id}
-        style={{ padding: `clamp(48px,8vw,104px) 0 ${Math.round(pad * 0.35)}px`, scrollMarginTop: 90 }}
+        style={{
+          padding: `clamp(48px,8vw,104px) 0 ${Math.round(pad * 0.35)}px`,
+          scrollMarginTop: 90,
+        }}
       >
         <Hero s={s} />
       </section>
@@ -476,6 +550,7 @@ export function SectionView({ s }: { s: Section }) {
           <SectionHeader s={s} />
         </div>
         <Band s={{ ...s, pad: 'compact' }} />
+        <Blocks s={s} sectionOwner="band" />
       </section>
     );
   }

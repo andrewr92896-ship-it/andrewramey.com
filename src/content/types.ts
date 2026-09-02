@@ -68,6 +68,33 @@ export type FieldStyle = {
 };
 
 /**
+ * What a box IS, when it is not the section's own kind of thing.
+ *
+ * Absent means "whatever this section holds" — a card in a cards section, an
+ * entry on the timeline — which is every item that existed before this did, so
+ * nothing already written changed on deploy. Set, it says the box is one of
+ * the site-wide blocks and renders that way wherever it sits: a credential in
+ * the middle of the hobbies grid, a video under the timeline, an image beside
+ * the about text. The section decides the LAYOUT; the kind decides the BOX.
+ */
+export type ItemKind = 'card' | 'credential' | 'image' | 'video' | 'text';
+
+/** Which typography and field list a block kind borrows. */
+export const BLOCK_OWNER: Record<ItemKind, string> = {
+  card: 'cards',
+  credential: 'certs',
+  image: 'image',
+  video: 'video',
+  text: 'about',
+};
+
+/** The owner an item renders as: its own kind's, else the section's. */
+export function itemOwner(item: { kind?: unknown }, sectionOwner: string): string {
+  const k = item.kind;
+  return typeof k === 'string' && k in BLOCK_OWNER ? BLOCK_OWNER[k as ItemKind] : sectionOwner;
+}
+
+/**
  * A box inside a section.
  *
  * Content is addressed by **field id**, so a duplicated field lives at
@@ -75,6 +102,7 @@ export type FieldStyle = {
  * key, and only the part before the `#` decides how it renders.
  */
 export type Item = {
+  kind?: ItemKind;
   title?: string;
   meta?: string;
   body?: string;
@@ -89,6 +117,8 @@ export type Item = {
 
   /** The image's address — usually /files/<something> from File Uploads. */
   imgSrc?: string;
+  /** A YouTube address, as pasted. The id is read out of it at render time. */
+  videoUrl?: string;
   imgId?: string;
   /** px, 100–420. */
   imgH?: number;
@@ -140,6 +170,8 @@ export type Section = {
   wide?: boolean;
   side?: 'left' | 'right';
   portraitId?: string;
+  /** The about section's headshot — /files/<something> from File Uploads. */
+  portraitSrc?: string;
 
   ctaLabel?: string;
   ctaHref?: string;
@@ -186,18 +218,56 @@ export type Model = {
 /**
  * The default field order per owner. A section or item may override it with
  * its own `fields`; when it does not, this is what renders.
+ *
+ * THIS IS THE ONLY LIST, AND THE EDITOR READS IT TOO. It used to have a twin in
+ * the editor saying which fields to OFFER, and the two disagreed: the form
+ * offered tags on a card and a link on a credential, and neither was here, so
+ * both were typed into and never drawn. A field a section renders only when it
+ * has content costs nothing to list, so every field an item can hold is here.
  */
 export const DEFAULT_FIELDS: Record<string, string[]> = {
   hero: ['eyebrow', 'h1', 'lede', 'buttons', 'chips'],
   header: ['eyebrow', 'title', 'note'],
-  cards: ['title', 'meta', 'body', 'link'],
-  certs: ['title', 'meta', 'body', 'credential'],
+  cards: ['title', 'meta', 'body', 'tags', 'link'],
+  certs: ['title', 'meta', 'body', 'credential', 'link'],
   tiers: ['title', 'body', 'tags'],
   timeline: ['meta', 'place', 'title', 'body', 'tags'],
   about: ['body'],
-  services: ['title', 'meta', 'body', 'tags'],
+  services: ['title', 'meta', 'body', 'tags', 'link'],
   band: ['meta', 'title'],
+  /** The two media blocks: the thing itself, then a caption. */
+  image: ['image', 'title'],
+  video: ['video', 'title'],
 };
+
+/**
+ * The id of a YouTube video, read out of whatever was pasted.
+ *
+ * Every shape a share button produces: youtu.be/ID, watch?v=ID, /shorts/ID,
+ * /live/ID, /embed/ID, and a bare id. Null for anything else — a wrong link
+ * must draw a slot that says so, never an embed of nothing.
+ */
+export function youtubeId(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  const ID = /^[\w-]{11}$/;
+  if (ID.test(s)) return s;
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.replace(/^(www|m)\./, '');
+  const valid = (v: string | null | undefined) => (v && ID.test(v) ? v : null);
+  if (host === 'youtu.be') return valid(u.pathname.slice(1).split('/')[0]);
+  if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    if (u.pathname === '/watch') return valid(u.searchParams.get('v'));
+    const m = /^\/(embed|shorts|live|v)\/([\w-]{11})(?:[/?#]|$)/.exec(u.pathname);
+    if (m) return valid(m[2]);
+  }
+  return null;
+}
 
 /** A field id is `kind` or `kind#n`; only the kind decides how it renders. */
 export function fieldKind(id: string): string {
@@ -208,15 +278,18 @@ export function fieldKind(id: string): string {
 /**
  * The fields an owner renders, in order.
  *
- * `image` is implicit: a box carrying an `imgId` renders it first unless the
- * field is listed explicitly somewhere else.
+ * `image` is implicit: a box carrying a picture renders it first unless the
+ * field is listed explicitly somewhere else. Keyed on `imgSrc` — the address
+ * the editor's picker actually writes — as well as the older `imgId`; testing
+ * `imgId` alone meant every image chosen in the editor was stored and never
+ * drawn.
  */
 export function fieldsFor(
-  owner: { fields?: string[]; imgId?: string },
+  owner: { fields?: string[]; imgId?: string; imgSrc?: string },
   fallback: string[],
 ): string[] {
   const listed = owner.fields ?? fallback;
-  if (owner.imgId && !listed.some((f) => fieldKind(f) === 'image')) {
+  if ((owner.imgSrc || owner.imgId) && !listed.some((f) => fieldKind(f) === 'image')) {
     return ['image', ...listed];
   }
   return listed;

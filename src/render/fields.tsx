@@ -15,7 +15,7 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 import { C, GOLD_GRADIENT, tint } from '../theme/tokens';
-import { fieldKind, type Button, type FieldStyle, type Item } from '../content/types';
+import { fieldKind, youtubeId, type Button, type FieldStyle, type Item } from '../content/types';
 import { linkProps, useFileViewer } from './viewer';
 
 /**
@@ -25,39 +25,71 @@ import { linkProps, useFileViewer } from './viewer';
  * what lets a box carry two body paragraphs at `body` and `body#2` that look
  * identical and read differently.
  */
+/**
+ * A card's typography, defined once because SERVICES USES IT TOO. Services had
+ * its own — a heavier title, a gold uppercase meta, a looser paragraph — and
+ * read as a different site from the cards above it. A service is a card.
+ */
+const CARD: Record<string, CSSProperties> = {
+  title: { font: `600 1.05rem/1.35 ${C.sans}`, color: C.text },
+  meta: {
+    font: `500 .72rem/1.5 ${C.mono}`,
+    letterSpacing: '.14em',
+    textTransform: 'uppercase',
+    color: C.faint,
+  },
+  body: { font: `400 .93rem/1.62 ${C.sans}`, color: C.muted },
+};
+
+/** A caption under an image or a video. */
+const CAPTION: CSSProperties = { font: `400 .82rem/1.55 ${C.sans}`, color: C.faint };
+
 const TYPO: Record<string, Record<string, CSSProperties>> = {
   hero: {
-    eyebrow: { font: `500 .7rem/1.4 ${C.mono}`, letterSpacing: '.2em', textTransform: 'uppercase', color: C.gold },
-    h1: { font: `700 clamp(2.2rem, 5.4vw, 4rem)/1.04 ${C.sans}`, letterSpacing: '-.02em', color: C.text, maxWidth: '34rem' },
-    lede: { font: `400 clamp(1rem, 1.6vw, 1.15rem)/1.65 ${C.sans}`, color: C.muted, maxWidth: '44rem' },
+    eyebrow: {
+      font: `500 .7rem/1.4 ${C.mono}`,
+      letterSpacing: '.2em',
+      textTransform: 'uppercase',
+      color: C.gold,
+    },
+    h1: {
+      font: `700 clamp(2.2rem, 5.4vw, 4rem)/1.04 ${C.sans}`,
+      letterSpacing: '-.02em',
+      color: C.text,
+      maxWidth: '34rem',
+    },
+    lede: {
+      font: `400 clamp(1rem, 1.6vw, 1.15rem)/1.65 ${C.sans}`,
+      color: C.muted,
+      maxWidth: '44rem',
+    },
   },
   header: {
-    eyebrow: { font: `500 .7rem/1.4 ${C.mono}`, letterSpacing: '.2em', textTransform: 'uppercase', color: C.gold },
+    eyebrow: {
+      font: `500 .7rem/1.4 ${C.mono}`,
+      letterSpacing: '.2em',
+      textTransform: 'uppercase',
+      color: C.gold,
+    },
     title: { font: `700 1.5rem/1.2 ${C.sans}`, letterSpacing: '-.01em', color: C.text },
     note: { font: `400 .95rem/1.65 ${C.sans}`, color: C.muted, maxWidth: '52rem' },
   },
-  cards: {
-    title: { font: `600 1.05rem/1.35 ${C.sans}`, color: C.text },
-    meta: { font: `500 .72rem/1.5 ${C.mono}`, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint },
-    body: { font: `400 .93rem/1.62 ${C.sans}`, color: C.muted },
-  },
+  cards: CARD,
+  services: CARD,
+  image: { title: CAPTION },
+  video: { title: CAPTION },
   certs: {
     title: { font: `600 1rem/1.35 ${C.sans}`, color: C.text },
     meta: { font: `500 .72rem/1.5 ${C.mono}`, letterSpacing: '.12em', color: C.faint },
     body: { font: `400 .88rem/1.6 ${C.sans}`, color: C.muted },
   },
-  services: {
-    title: { font: `700 1.02rem/1.35 ${C.sans}`, color: C.text },
-    meta: {
-      font: `500 .68rem/1.5 ${C.mono}`,
-      letterSpacing: '.14em',
+  tiers: {
+    title: {
+      font: `500 .76rem/1.5 ${C.mono}`,
+      letterSpacing: '.16em',
       textTransform: 'uppercase',
       color: C.gold,
     },
-    body: { font: `400 .93rem/1.7 ${C.sans}`, color: C.muted },
-  },
-  tiers: {
-    title: { font: `500 .76rem/1.5 ${C.mono}`, letterSpacing: '.16em', textTransform: 'uppercase', color: C.gold },
     body: { font: `400 .84rem/1.6 ${C.sans}`, color: C.faint },
   },
   timeline: {
@@ -70,7 +102,13 @@ const TYPO: Record<string, Record<string, CSSProperties>> = {
     body: { font: `400 1rem/1.75 ${C.sans}`, color: C.muted, maxWidth: '46rem' },
   },
   band: {
-    meta: { font: `500 .7rem/1.5 ${C.mono}`, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, minWidth: '5.5rem' },
+    meta: {
+      font: `500 .7rem/1.5 ${C.mono}`,
+      letterSpacing: '.14em',
+      textTransform: 'uppercase',
+      color: C.faint,
+      minWidth: '5.5rem',
+    },
     title: { font: `600 1rem/1.5 ${C.sans}`, color: C.text },
   },
 };
@@ -93,7 +131,11 @@ function applyStyle(base: CSSProperties, s?: FieldStyle): CSSProperties {
   return out;
 }
 
-export function typoFor(owner: string, id: string, styles?: Record<string, FieldStyle>): CSSProperties {
+export function typoFor(
+  owner: string,
+  id: string,
+  styles?: Record<string, FieldStyle>,
+): CSSProperties {
   const base = TYPO[owner]?.[fieldKind(id)] ?? {};
   return applyStyle({ margin: 0, ...base }, styles?.[id]);
 }
@@ -229,7 +271,15 @@ export function CardLink({ item }: { item: Item }) {
       <button
         type="button"
         onClick={() => openFile({ src: item.href as string, label: item.linkLabel })}
-        style={{ ...style, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: C.sans }}
+        style={{
+          ...style,
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: C.sans,
+        }}
       >
         {label}
       </button>
@@ -322,7 +372,9 @@ export function Preview({ item }: { item: Item }) {
   return (
     <button
       type="button"
-      onClick={() => openFile({ src, label: typeof item.title === 'string' ? item.title : undefined })}
+      onClick={() =>
+        openFile({ src, label: typeof item.title === 'string' ? item.title : undefined })
+      }
       style={{
         display: 'block',
         width: '100%',
@@ -338,9 +390,69 @@ export function Preview({ item }: { item: Item }) {
       <img
         src={src}
         alt=""
-        style={{ width: '100%', height: '100%', objectFit: item.imgFit ?? 'cover', display: 'block' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: item.imgFit ?? 'cover',
+          display: 'block',
+        }}
       />
     </button>
+  );
+}
+
+/**
+ * An embedded YouTube video.
+ *
+ * The id is read out of the pasted address at render time, so the model holds
+ * exactly what was typed and a link nobody recognises draws a slot SAYING so —
+ * the same rule as the image slot, and the alternative is an embed of nothing
+ * with YouTube's own error inside it. The no-cookie host, because a portfolio
+ * has no business setting a tracking cookie before anybody presses play.
+ */
+export function Video({ item }: { item: Item }) {
+  const url = typeof item.videoUrl === 'string' ? item.videoUrl : '';
+  const id = youtubeId(url);
+  const frame: CSSProperties = {
+    aspectRatio: '16 / 9',
+    width: '100%',
+    borderRadius: 10,
+    border: `1px solid ${C.line}`,
+    overflow: 'hidden',
+  };
+  if (!id) {
+    return (
+      <div
+        style={{
+          ...frame,
+          border: `1px dashed ${C.line2}`,
+          background: tint('#091633', 0.4),
+          display: 'grid',
+          placeItems: 'center',
+          font: `500 .68rem/1.4 ${C.mono}`,
+          letterSpacing: '.14em',
+          textTransform: 'uppercase',
+          color: C.faint,
+          textAlign: 'center',
+          padding: 16,
+        }}
+      >
+        {url.trim() ? 'Not a YouTube link' : 'Video to come'}
+      </div>
+    );
+  }
+  return (
+    <div style={{ ...frame, background: '#000' }}>
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${id}`}
+        title={typeof item.title === 'string' && item.title ? item.title : 'Video'}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
+        style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+      />
+    </div>
   );
 }
 
@@ -349,7 +461,8 @@ export function hasContent(owner: Item, id: string): boolean {
   const kind = fieldKind(id);
   if (kind === 'tags') return Array.isArray(owner[id]) && (owner[id] as string[]).length > 0;
   if (kind === 'buttons') return Array.isArray(owner[id]) && (owner[id] as Button[]).length > 0;
-  if (kind === 'image') return true;
+  // Media always draws — an empty one is a slot that says what is missing.
+  if (kind === 'image' || kind === 'video') return true;
   if (kind === 'link') return Boolean(owner.href);
   const v = owner[id];
   return typeof v === 'string' && v.trim() !== '';
@@ -369,6 +482,8 @@ export function Field({ owner, item, id }: FieldProps): ReactNode {
   switch (kind) {
     case 'image':
       return <Preview item={item} />;
+    case 'video':
+      return <Video item={item} />;
     case 'tags':
       return owner === 'timeline' ? (
         <Bullets tags={item[id] as string[]} />
