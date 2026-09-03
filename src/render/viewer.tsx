@@ -13,7 +13,15 @@
 // fails the OTHER repo until its copy is brought across too. That is what makes
 // drift impossible to ship rather than merely discouraged.
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { C, tint } from '../theme/tokens';
 
 /**
@@ -131,7 +139,16 @@ function FileViewer({
       (window.innerWidth < 420 || window.matchMedia?.('(pointer: coarse)').matches === true),
   );
 
+  /**
+   * Focus goes INTO the dialog on open and BACK to what opened it on close.
+   * Without the first, a keyboard user who pressed Enlarge is still on the
+   * button behind the overlay, tabbing through a page they cannot see; without
+   * the second, closing drops them at the top of the document.
+   */
+  const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    closeButton.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -142,6 +159,7 @@ function FileViewer({
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previous;
+      opener?.focus?.();
     };
   }, [onClose]);
 
@@ -228,8 +246,10 @@ function FileViewer({
             Open in a new tab
           </a>
           <button
+            ref={closeButton}
             type="button"
             onClick={onClose}
+            aria-label="Close"
             style={{
               padding: '.6rem 1.1rem',
               borderRadius: '.55rem',

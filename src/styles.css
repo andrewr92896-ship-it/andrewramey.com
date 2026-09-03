@@ -19,34 +19,56 @@
 
 *,
 *::before,
-*::after { box-sizing: border-box; }
+*::after {
+  box-sizing: border-box;
+}
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 
 body {
   margin: 0;
   background: #061026;
-  color: #E9EFFB;
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e9effb;
+  font-family:
+    'IBM Plex Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-img { max-width: 100%; display: block; }
+img {
+  max-width: 100%;
+  display: block;
+}
 
-a { color: inherit; }
+a {
+  color: inherit;
+}
 
 :focus-visible {
-  outline: 2px solid #EBCB74;
+  outline: 2px solid #ebcb74;
   outline-offset: 2px;
 }
 
 /* iOS zooms the viewport on any focused field below 16px. */
 @media (pointer: coarse) {
-  input, textarea, select { font-size: 16px !important; }
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
@@ -65,5 +87,21 @@ a { color: inherit; }
   .about-split > *:first-child {
     order: 0 !important;
     max-width: 280px;
+  }
+}
+
+/* The image slideshow. Its controls are inline-styled; what lives here is what
+   a stylesheet is for — the hover states and the touch-device rule. */
+.gallery-stage button[aria-label^='Previous']:hover,
+.gallery-stage button[aria-label^='Next']:hover {
+  background: rgba(6, 16, 38, 0.92) !important;
+}
+.gallery-thumbs {
+  scrollbar-width: thin;
+}
+@media (max-width: 720px) {
+  .gallery-thumbs button {
+    width: 52px !important;
+    height: 36px !important;
   }
 }

@@ -13,7 +13,14 @@
 // fails the OTHER repo until its copy is brought across too. That is what makes
 // drift impossible to ship rather than merely discouraged.
 
-import type { CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { C, BOX_PAD, PAD, tint } from '../theme/tokens';
 import {
   DEFAULT_FIELDS,
@@ -25,6 +32,7 @@ import {
   type LinkBehavior,
 } from '../content/types';
 import { Btn, Chips, Field, hasContent, typoFor } from './fields';
+import { useFileViewer } from './viewer';
 
 // ---------------------------------------------------------------- box
 
@@ -527,6 +535,298 @@ function Band({ s }: { s: Section }) {
 
 // ---------------------------------------------------------------- entry
 
+// ---------------------------------------------------------------- gallery
+
+/**
+ * An image slideshow — screenshots of a project, a set of logos.
+ *
+ * THE FRAME IS A FIXED SHAPE (16:10) AND THE IMAGE FITS INSIDE IT, so moving
+ * between a tall phone screenshot and a wide desktop one never shifts the page
+ * under the reader. `contain` (the default) keeps every pixel of a screenshot
+ * or a logo; `cover` fills and crops, for images where that is the intent.
+ *
+ * ONLY THE CURRENT SLIDE IS IN THE DOCUMENT. That is what makes the first
+ * image the only one fetched on page load — every other one loads when it is
+ * reached — without a lazy-loading scheme to get wrong.
+ *
+ * THE VISITOR MOVES IT; NOTHING AUTOPLAYS. Previous and next, a counter, the
+ * thumbnails, the arrow keys while the slideshow is focused, and a swipe on a
+ * touch screen. Pressing the image opens it, enlarged, in the same viewer
+ * every other file on the site opens in — Escape closes it and focus comes
+ * back to where it was.
+ *
+ * A slide with no image, or one whose file is gone, draws a slot that says so
+ * rather than a broken picture — the rule every image on the site follows.
+ */
+const SWIPE_PX = 40;
+
+function Gallery({ s }: { s: Section }) {
+  const slides = s.items;
+  const count = slides.length;
+  const [index, setIndex] = useState(0);
+  const [broken, setBroken] = useState<Record<string, boolean>>({});
+  const openFile = useFileViewer();
+  const region = useRef<HTMLDivElement>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  // A swipe ends on the same button a tap does, so the click that follows it
+  // would open the lightbox on every swipe. This marks the click as spent.
+  const swiped = useRef(false);
+
+  // Deleting slides in the editor can leave the index past the end.
+  useEffect(() => {
+    if (index > Math.max(0, count - 1)) setIndex(Math.max(0, count - 1));
+  }, [count, index]);
+
+  const go = useCallback(
+    (to: number) => {
+      if (count === 0) return;
+      setIndex(((to % count) + count) % count);
+    },
+    [count],
+  );
+  const prev = useCallback(() => go(index - 1), [go, index]);
+  const next = useCallback(() => go(index + 1), [go, index]);
+
+  if (count === 0) return null;
+
+  const slide = slides[Math.min(index, count - 1)];
+  const src = typeof slide.imgSrc === 'string' ? slide.imgSrc : '';
+  const alt = typeof slide.alt === 'string' ? slide.alt : '';
+  const title = typeof slide.title === 'string' ? slide.title : '';
+  const caption = typeof slide.caption === 'string' ? slide.caption : '';
+  const fit = s.imgFit ?? 'contain';
+  const thumbs = s.thumbs !== false && count > 1;
+  const name = s.title || 'Image slideshow';
+  const missing = !src || broken[src];
+
+  const onKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key === 'ArrowLeft') prev();
+    else if (e.key === 'ArrowRight') next();
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(count - 1);
+    else return;
+    e.preventDefault();
+  };
+
+  const navButton = (side: 'prev' | 'next'): CSSProperties => ({
+    position: 'absolute',
+    top: '50%',
+    [side === 'prev' ? 'left' : 'right']: 10,
+    transform: 'translateY(-50%)',
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    // Legible on a white screenshot and on a dark one alike: a translucent
+    // navy disc with a light rim, never the image's own colours.
+    background: 'rgba(6,16,38,.72)',
+    border: '1px solid rgba(233,239,251,.32)',
+    color: C.text,
+    display: 'grid',
+    placeItems: 'center',
+    cursor: 'pointer',
+    padding: 0,
+    font: `600 1.1rem/1 ${C.sans}`,
+    backdropFilter: 'blur(2px)',
+  });
+
+  return (
+    <div
+      ref={region}
+      className="gallery"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={name}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      style={{ outlineOffset: 4, borderRadius: 14 }}
+    >
+      <div
+        className="gallery-stage"
+        onPointerDown={(e) => {
+          swiped.current = false;
+          pointer.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerUp={(e) => {
+          const start = pointer.current;
+          pointer.current = null;
+          if (!start) return;
+          const dx = e.clientX - start.x;
+          const dy = e.clientY - start.y;
+          // A horizontal swipe, not a vertical scroll and not a tap.
+          if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return;
+          swiped.current = true;
+          // The click, if there is one, is dispatched before this runs; a
+          // release with no click must not leave the next tap spent.
+          setTimeout(() => {
+            swiped.current = false;
+          }, 0);
+          dx < 0 ? next() : prev();
+        }}
+        onPointerCancel={() => {
+          pointer.current = null;
+        }}
+        style={{
+          position: 'relative',
+          aspectRatio: '16 / 10',
+          borderRadius: 12,
+          border: `1px solid ${C.line}`,
+          background: tint('#091633', 0.6),
+          overflow: 'hidden',
+          touchAction: 'pan-y',
+          userSelect: 'none',
+        }}
+      >
+        {missing ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'grid',
+              placeItems: 'center',
+              font: `500 .68rem/1.4 ${C.mono}`,
+              letterSpacing: '.14em',
+              textTransform: 'uppercase',
+              color: C.faint,
+              textAlign: 'center',
+              padding: 20,
+            }}
+          >
+            {src ? 'Image not found' : 'Image to come'}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (swiped.current) {
+                swiped.current = false;
+                return;
+              }
+              openFile({ src, label: alt || title || `Slide ${index + 1}` });
+            }}
+            aria-label={`Enlarge: ${alt || title || `slide ${index + 1}`}`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'zoom-in',
+              outlineOffset: -4,
+            }}
+          >
+            <img
+              key={src}
+              src={src}
+              alt={alt}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              draggable={false}
+              onError={() => setBroken((b) => ({ ...b, [src]: true }))}
+              style={{ width: '100%', height: '100%', objectFit: fit, display: 'block' }}
+            />
+          </button>
+        )}
+
+        {count > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={prev}
+              aria-label="Previous slide"
+              style={navButton('prev')}
+            >
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button type="button" onClick={next} aria-label="Next slide" style={navButton('next')}>
+              <span aria-hidden="true">›</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      <div
+        aria-live="polite"
+        style={{
+          display: 'flex',
+          gap: 14,
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          marginTop: 10,
+          minHeight: '1.6rem',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          {title && (
+            <p style={{ margin: 0, font: `600 .95rem/1.4 ${C.sans}`, color: C.text }}>{title}</p>
+          )}
+          {caption && (
+            <p style={{ margin: 0, font: `400 .88rem/1.55 ${C.sans}`, color: C.muted }}>
+              {caption}
+            </p>
+          )}
+        </div>
+        <span
+          className="gallery-counter"
+          style={{
+            flex: 'none',
+            font: `500 .72rem/1.5 ${C.mono}`,
+            letterSpacing: '.14em',
+            color: C.faint,
+          }}
+        >
+          {index + 1} / {count}
+        </span>
+      </div>
+
+      {thumbs && (
+        <div
+          className="gallery-thumbs"
+          style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', paddingBottom: 4 }}
+        >
+          {slides.map((it, i) => {
+            const tsrc = typeof it.imgSrc === 'string' ? it.imgSrc : '';
+            const talt = typeof it.alt === 'string' && it.alt ? it.alt : `slide ${i + 1}`;
+            const current = i === index;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => go(i)}
+                aria-label={`Slide ${i + 1}: ${talt}`}
+                aria-current={current ? 'true' : undefined}
+                style={{
+                  flex: 'none',
+                  width: 64,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: 7,
+                  overflow: 'hidden',
+                  border: `2px solid ${current ? C.gold : C.line2}`,
+                  background: tint('#091633', 0.6),
+                  cursor: 'pointer',
+                  opacity: current ? 1 : 0.7,
+                }}
+              >
+                {tsrc && !broken[tsrc] ? (
+                  <img
+                    src={tsrc}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SectionView({ s }: { s: Section }) {
   const pad = PAD[s.pad ?? 'normal'];
 
@@ -569,6 +869,7 @@ export function SectionView({ s }: { s: Section }) {
       {s.type === 'timeline' && <Timeline s={s} />}
       {s.type === 'about' && <About s={s} />}
       {s.type === 'services' && <Services s={s} />}
+      {s.type === 'gallery' && <Gallery s={s} />}
     </section>
   );
 }

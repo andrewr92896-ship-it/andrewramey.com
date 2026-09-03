@@ -68,7 +68,13 @@ function Header({ nav }: { nav: Nav }) {
       <a
         href="#top"
         onClick={(e) => onAnchor(e, '#top')}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', minWidth: 0 }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          textDecoration: 'none',
+          minWidth: 0,
+        }}
       >
         <span
           style={{
@@ -165,8 +171,8 @@ function Footer() {
       <span>© 2026 Ramey Essential Solutions LLC</span>
       {/* Load-bearing. Keep it on every page — see AGENTS.md. */}
       <span style={{ maxWidth: '44rem' }}>
-        Software engineering and AI work only. Nothing on this site is financial, investment, tax or
-        trading advice, or an offer of advisory services.
+        Professional portfolio of Andrew Ramey. Nothing on this site is financial, investment, tax,
+        or trading advice, or an offer of advisory services.
       </span>
     </footer>
   );

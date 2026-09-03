@@ -28,7 +28,10 @@ export type SectionType =
   | 'timeline'
   | 'about'
   | 'services'
-  | 'band';
+  | 'band'
+  // An image slideshow: screenshots of a project, a set of logos. Items are
+  // slides — an uploaded image, its alt text, an optional title and caption.
+  | 'gallery';
 
 /**
  * What happens when a link is clicked.
@@ -120,6 +123,13 @@ export type Item = {
 
   /** The image's address — usually /files/<something> from File Uploads. */
   imgSrc?: string;
+  /**
+   * What the image shows, for anybody who cannot see it. A slide is nothing
+   * but its image, so the editor prompts for this rather than leaving it blank.
+   */
+  alt?: string;
+  /** A line under a slide. */
+  caption?: string;
   /** A YouTube address, as pasted. The id is read out of it at render time. */
   videoUrl?: string;
   imgId?: string;
@@ -191,6 +201,15 @@ export type Section = {
   contactEmail?: string;
   contactPhone?: string;
 
+  /**
+   * A gallery's frame: `contain` keeps every pixel of a screenshot or a logo
+   * inside it (the default); `cover` fills the frame and crops, for images
+   * where that is the intent. The same two words `Item.imgFit` already uses.
+   */
+  imgFit?: 'cover' | 'contain';
+  /** A gallery's thumbnail strip. Absent means shown; false hides it. */
+  thumbs?: boolean;
+
   items: Item[];
 
   [key: string]: unknown;
@@ -242,6 +261,8 @@ export const DEFAULT_FIELDS: Record<string, string[]> = {
   image: ['image', 'title'],
   video: ['video', 'title'],
   callout: ['title', 'body'],
+  /** A slide. The gallery draws these itself; the editor reads the list. */
+  gallery: ['image', 'alt', 'title', 'caption'],
 };
 
 /**
