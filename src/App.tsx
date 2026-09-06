@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
+import Certifications from './pages/Certifications';
 import NotFound from './pages/NotFound';
 import { SITE_MODEL } from './content/live';
 
@@ -18,6 +19,14 @@ import { SITE_MODEL } from './content/live';
  */
 const SECTION_PATHS = SITE_MODEL.sections.map((s) => s.id);
 
+/**
+ * /certifications is a PAGE, not a section — a second document, edited from
+ * the admin's "Certifications page" entry. It is matched before the section
+ * paths so a section that happened to take that id could never shadow it.
+ * Published path: never change it.
+ */
+const PAGE_PATHS = ['certifications'];
+
 function LandOnSection() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -30,7 +39,10 @@ function LandOnSection() {
     if (!el) return;
     // 'auto', not 'smooth': arriving from an external link should land on the
     // section, not animate past every one above it on the way down.
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 20, behavior: 'auto' });
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 20,
+      behavior: 'auto',
+    });
   }, [pathname]);
   return null;
 }
@@ -41,7 +53,8 @@ export default function App() {
       <LandOnSection />
       <Routes>
         <Route path="/" element={<Home />} />
-        {SECTION_PATHS.map((id) => (
+        <Route path="/certifications" element={<Certifications />} />
+        {SECTION_PATHS.filter((id) => !PAGE_PATHS.includes(id)).map((id) => (
           <Route key={id} path={`/${id}`} element={<Home />} />
         ))}
         <Route path="*" element={<NotFound />} />

@@ -35,7 +35,13 @@ import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adminOrigin, lastRead, maintenanceOn, publishedContent, startPolling } from './siteState.js';
+import {
+  adminOrigin,
+  lastRead,
+  maintenanceOn,
+  publishedContent,
+  startPolling,
+} from './siteState.js';
 import { sendMaintenance } from './maintenance.js';
 import { serveFile } from './files.js';
 
@@ -91,9 +97,7 @@ function send(res, status, path, size, { immutable = false } = {}) {
   res.writeHead(status, {
     'Content-Type': type,
     'Content-Length': size,
-    'Cache-Control': immutable
-      ? 'public, max-age=31536000, immutable'
-      : 'no-cache',
+    'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
   });
@@ -116,14 +120,52 @@ function send(res, status, path, size, { immutable = false } = {}) {
  * The composed HTML is cached against the model it was built from, so this is
  * one serialize per publish rather than one per visitor.
  */
-let shellCache = { model: null, html: null };
+let shellCache = { model: null, page: null, html: null };
 
-function composeShell(raw, model) {
-  if (!model) return raw;
-  if (shellCache.model === model && shellCache.html) return shellCache.html;
-  const json = JSON.stringify(model).replace(/</g, '\\u003c');
-  const html = raw.replace('</head>', `<script>window.__AR_MODEL__=${json}</script></head>`);
-  shellCache = { model, html };
+/**
+ * The shell's title and description per PAGE. The router decides what a path
+ * renders, but a crawler and a link preview read the document as served, so
+ * a direct visit to /certifications has to carry that page's own — the app
+ * sets the same values on a client-side navigation (src/pages/Certifications).
+ */
+const PAGES = {
+  certifications: {
+    title: 'Certifications · Andrew Ramey',
+    description:
+      'Professional certifications held by Andrew Ramey, each with a direct link to the official credential page.',
+    url: 'https://andrewramey.com/certifications',
+  },
+};
+
+function pageFor(reqPath) {
+  const first = reqPath.replace(/^\/+|\/+$/g, '').split('/')[0];
+  return PAGES[first] ? first : null;
+}
+
+const escAttr = (v) =>
+  String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+function composeShell(raw, model, page) {
+  if (shellCache.model === model && shellCache.page === page && shellCache.html)
+    return shellCache.html;
+  let html = raw;
+  const meta = page ? PAGES[page] : null;
+  if (meta) {
+    html = html
+      .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(meta.title)}</title>`)
+      .replace(/(<meta name="description" content=")[^"]*(")/, `$1${escAttr(meta.description)}$2`)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${escAttr(meta.title)}$2`)
+      .replace(
+        /(<meta property="og:description" content=")[^"]*(")/,
+        `$1${escAttr(meta.description)}$2`,
+      )
+      .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${escAttr(meta.url)}$2`);
+  }
+  if (model) {
+    const json = JSON.stringify(model).replace(/</g, '\\u003c');
+    html = html.replace('</head>', `<script>window.__AR_MODEL__=${json}</script></head>`);
+  }
+  shellCache = { model, page, html };
   return html;
 }
 
@@ -132,11 +174,12 @@ async function sendShell(req, res, path) {
   try {
     raw = await readFile(path, 'utf8');
   } catch {
-    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res
+      .writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
       .end('Site not built. Run `npm run build`.');
     return;
   }
-  const html = composeShell(raw, publishedContent());
+  const html = composeShell(raw, publishedContent(), pageFor((req.url ?? '/').split('?')[0]));
   const body = Buffer.from(html, 'utf8');
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
@@ -178,7 +221,10 @@ const server = createServer(async (req, res) => {
       admin: adminOrigin() || null,
       lastReadFromAdmin: lastRead(),
     });
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
     res.end(body);
     return;
   }

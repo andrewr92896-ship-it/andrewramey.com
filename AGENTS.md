@@ -225,6 +225,19 @@ what the app reads.
 - **index.html is composed per request and never cached.** It carries the
   content, so a cached copy is a stale page that outlives a publish.
 
+### /certifications — the second public page
+
+A compact profile header and the credentials one under another, each with its
+verification address printed in full and linked. It renders
+`model.certifications`, an optional key on the same injected model, through
+the mirrored `src/render/Certifications.tsx`; `src/pages/Certifications.tsx`
+is the route's page and sets the document title on a client-side arrival, and
+`server.js` composes the page's own `<title>`, description and `og:url` into
+the shell for a direct visit (`PAGES`), which `test:maintenance` C2 pins. The
+route is matched **before** the section paths so no section id can shadow it.
+**A published path — never change it.** A model with no `certifications` still
+answers: the name falls back to the wordmark and the list is empty.
+
 ### The `services` section
 
 A list of what Andrew takes on, with a contact strip under it (owner request,

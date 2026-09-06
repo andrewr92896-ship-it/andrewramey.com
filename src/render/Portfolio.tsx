@@ -153,7 +153,8 @@ function Header({ nav }: { nav: Nav }) {
   );
 }
 
-function Footer() {
+/** The site's footer, on every page — the Certifications page draws it too. */
+export function Footer() {
   return (
     <footer
       style={{

@@ -232,9 +232,48 @@ export type Nav = {
   logoSrc?: string;
 };
 
+/**
+ * One credential on the Certifications page: the certificate itself, who gave
+ * it, when, what it covered, and the address that confirms it. Field names
+ * match Item's where the meaning is the same (`title`, `body`, `imgSrc`,
+ * `href`), so the editor's pickers and rows are reused unchanged.
+ */
+export type Certification = {
+  title?: string;
+  issuer?: string;
+  /** As written — "September 6, 2026" — never parsed. */
+  issued?: string;
+  body?: string;
+  imgSrc?: string;
+  /** The verification address. Shown in full and clickable. */
+  href?: string;
+  [key: string]: unknown;
+};
+
+/**
+ * The Certifications page, at /certifications: a compact profile header, a
+ * button back to the portfolio, and the credentials one under another.
+ * Absent means the page has never been set up; the site still answers the
+ * address with the header drawn from the nav and no entries.
+ */
+export type CertificationsPage = {
+  headshotSrc?: string;
+  name?: string;
+  /** The professional title under the name. */
+  role?: string;
+  intro?: string;
+  /** Where the button goes. Absent means the portfolio's own address. */
+  homeHref?: string;
+  homeLabel?: string;
+  title?: string;
+  note?: string;
+  items: Certification[];
+};
+
 export type Model = {
   nav: Nav;
   sections: Section[];
+  certifications?: CertificationsPage;
 };
 
 // ---------------------------------------------------------------- fields

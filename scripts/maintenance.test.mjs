@@ -197,6 +197,30 @@ await withServer(4706, {}, async (B) => {
 });
 
 // ---- D. the file proxy
+console.log('\nC2. THE CERTIFICATIONS PAGE');
+answer = { status: 200, body: '{"maintenance":false}' };
+published = {
+  status: 200,
+  model: {
+    ...published.model,
+    certifications: {
+      name: 'PUBLISHED NAME',
+      items: [{ title: 'Intro to Cowork', href: 'https://academy.claude.com/verify/abc' }],
+    },
+  },
+};
+await withServer(4715, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
+  const r = await fetch(`${B}/certifications`, { headers: { Accept: 'text/html' } });
+  const html = await r.text();
+  ok(r.status === 200 && html.includes('<div id="root">'), 'a direct visit to /certifications gets the app', `${r.status}`);
+  ok(html.includes('<title>Certifications · Andrew Ramey</title>'), 'with the page\'s own title in the document');
+  ok(/og:url" content="https:\/\/andrewramey\.com\/certifications"/.test(html), 'and its own og:url');
+  ok(html.includes('"certifications":{"name":"PUBLISHED NAME"'), 'and the certifications carried in the injected model');
+  const home = await (await fetch(`${B}/`, { headers: { Accept: 'text/html' } })).text();
+  ok(home.includes('<title>Andrew Ramey</title>'), 'while the portfolio keeps its own title');
+});
+delete published.model.certifications;
+
 console.log('\nD. THE FILE PROXY');
 answer = { status: 200, body: '{"maintenance":false}' };
 await withServer(4707, { ADMIN_STATE_URL: STATE_URL }, async (B) => {
