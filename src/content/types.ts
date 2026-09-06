@@ -31,7 +31,9 @@ export type SectionType =
   | 'band'
   // An image slideshow: screenshots of a project, a set of logos. Items are
   // slides — an uploaded image, its alt text, an optional title and caption.
-  | 'gallery';
+  | 'gallery'
+  /** Certificates: badge tiles that link to their confirmation, and a list below for the rest. */
+  | 'certificates';
 
 /**
  * What happens when a link is clicked.
@@ -263,6 +265,7 @@ export const DEFAULT_FIELDS: Record<string, string[]> = {
   callout: ['title', 'body'],
   /** A slide. The gallery draws these itself; the editor reads the list. */
   gallery: ['image', 'alt', 'title', 'caption'],
+  certificates: ['image', 'title', 'meta', 'credential', 'link'],
 };
 
 /**

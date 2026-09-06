@@ -105,3 +105,9 @@ a {
     height: 36px !important;
   }
 }
+
+/* A certificate tile is one link; say so on hover the way the cards do. */
+a.cert-tile:hover {
+  border-style: solid !important;
+  border-color: rgba(235, 203, 116, 0.7) !important;
+}

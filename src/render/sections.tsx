@@ -31,8 +31,8 @@ import {
   type Section,
   type LinkBehavior,
 } from '../content/types';
-import { Btn, Chips, Field, hasContent, typoFor } from './fields';
-import { useFileViewer } from './viewer';
+import { Btn, Chips, CredentialChip, Field, hasContent, typoFor } from './fields';
+import { linkProps, useFileViewer } from './viewer';
 
 // ---------------------------------------------------------------- box
 
@@ -538,6 +538,198 @@ function Band({ s }: { s: Section }) {
 // ---------------------------------------------------------------- gallery
 
 /**
+ * Certificates: a badge is a TILE, a certificate with no badge is a ROW.
+ *
+ * A tile is one link, the whole of it — the badge, the name, the issuer — so
+ * the badge itself is what a reader clicks to confirm the completion, and the
+ * address is never printed. A tile without a confirmation link is a picture
+ * and says nothing about confirming anything. Certificates that come with no
+ * badge are listed under the tiles rather than drawn as tiles with a hole in
+ * them; each row keeps the same confirmation link, written out as a link.
+ */
+function Certificates({ s }: { s: Section }) {
+  const tiles = s.items.filter((it) => typeof it.imgSrc === 'string' && it.imgSrc);
+  const rows = s.items.filter((it) => !(typeof it.imgSrc === 'string' && it.imgSrc));
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const confirm = (it: Item) => str(it.linkLabel) || 'Confirm completion';
+
+  return (
+    <div style={{ display: 'grid', gap: 22 }}>
+      {tiles.length > 0 && (
+        <div
+          className="cert-tiles"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: gridCols(s, 240),
+            gap: s.gap ?? 14,
+          }}
+        >
+          {tiles.map((it, i) => {
+            const href = str(it.href);
+            const inner = (
+              <>
+                <span
+                  style={{
+                    display: 'block',
+                    aspectRatio: '3 / 2',
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    background: tint('#091633', 0.6),
+                    border: `1px solid ${C.line}`,
+                  }}
+                >
+                  <img
+                    src={str(it.imgSrc)}
+                    alt={str(it.title) ? `${str(it.title)} badge` : 'Certificate badge'}
+                    loading="lazy"
+                    decoding="async"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                  />
+                </span>
+                {str(it.title) && (
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 12,
+                      font: `600 .95rem/1.35 ${C.sans}`,
+                      color: C.text,
+                    }}
+                  >
+                    {str(it.title)}
+                  </span>
+                )}
+                {str(it.meta) && (
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      font: `500 .68rem/1.5 ${C.mono}`,
+                      letterSpacing: '.12em',
+                      textTransform: 'uppercase',
+                      color: C.faint,
+                    }}
+                  >
+                    {str(it.meta)}
+                  </span>
+                )}
+                {str(it.credential) && (
+                  <span style={{ display: 'block', marginTop: 8 }}>
+                    <CredentialChip value={str(it.credential)} />
+                  </span>
+                )}
+                {href && (
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 10,
+                      font: `600 .82rem/1.5 ${C.sans}`,
+                      color: C.gold,
+                    }}
+                  >
+                    {confirm(it)} →
+                  </span>
+                )}
+              </>
+            );
+            const tile: CSSProperties = {
+              display: 'block',
+              padding: 12,
+              borderRadius: 12,
+              border: `1px dashed ${tint(C.gold, 0.32)}`,
+              background: tint(C.gold, 0.05),
+              textDecoration: 'none',
+              color: 'inherit',
+              minWidth: 0,
+            };
+            return href ? (
+              <a
+                key={i}
+                className="cert-tile"
+                {...linkProps(href, it.behavior)}
+                aria-label={`${str(it.title) || 'Certificate'} — ${confirm(it)}`}
+                style={tile}
+              >
+                {inner}
+              </a>
+            ) : (
+              <div key={i} className="cert-tile" style={tile}>
+                {inner}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <ul
+          className="cert-list"
+          style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+            display: 'grid',
+            gap: 8,
+          }}
+        >
+          {rows.map((it, i) => {
+            const href = str(it.href);
+            return (
+              <li
+                key={i}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'baseline',
+                  gap: '6px 14px',
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: `1px solid ${C.line}`,
+                  background: C.panel,
+                }}
+              >
+                <span style={{ font: `600 .92rem/1.4 ${C.sans}`, color: C.text }}>
+                  {str(it.title) || 'Certificate'}
+                </span>
+                {str(it.meta) && (
+                  <span
+                    style={{
+                      font: `500 .66rem/1.5 ${C.mono}`,
+                      letterSpacing: '.12em',
+                      textTransform: 'uppercase',
+                      color: C.faint,
+                    }}
+                  >
+                    {str(it.meta)}
+                  </span>
+                )}
+                {str(it.credential) && <CredentialChip value={str(it.credential)} />}
+                {href && (
+                  <a
+                    {...linkProps(href, it.behavior)}
+                    style={{
+                      marginLeft: 'auto',
+                      font: `600 .82rem/1.5 ${C.sans}`,
+                      color: C.gold,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {confirm(it)} →
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
  * An image slideshow — screenshots of a project, a set of logos.
  *
  * THE FRAME IS A FIXED SHAPE (16:10) AND THE IMAGE FITS INSIDE IT, so moving
@@ -870,6 +1062,7 @@ export function SectionView({ s }: { s: Section }) {
       {s.type === 'about' && <About s={s} />}
       {s.type === 'services' && <Services s={s} />}
       {s.type === 'gallery' && <Gallery s={s} />}
+      {s.type === 'certificates' && <Certificates s={s} />}
     </section>
   );
 }
