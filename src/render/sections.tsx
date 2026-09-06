@@ -194,10 +194,21 @@ function SectionHeader({ s }: { s: Section }) {
 
 // ---------------------------------------------------------------- grids
 
+/**
+ * How a grid divides its row.
+ *
+ * `auto-fill`, NOT `auto-fit`: with auto-fit a lone card stretched across the
+ * whole row (owner report, 2026-09 — one credential card became one row), and
+ * two cards took half the page each. auto-fill keeps the column width whatever
+ * the count, so cards sit beside one another and wrap when the row is full.
+ * A grid whose cards carry pictures gets a wider column — three across on the
+ * full column — so a badge or a screenshot stays readable.
+ */
 function gridCols(s: Section, defaultMin: number): string {
   if (typeof s.cols === 'number') return `repeat(${s.cols}, minmax(0,1fr))`;
-  const min = s.colMin ?? (s.wide ? 300 : defaultMin);
-  return `repeat(auto-fit, minmax(min(${min}px, 100%), 1fr))`;
+  const pictured = s.items.some((it) => typeof it.imgSrc === 'string' && it.imgSrc);
+  const min = s.colMin ?? (s.wide ? 300 : pictured ? 320 : defaultMin);
+  return `repeat(auto-fill, minmax(min(${min}px, 100%), 1fr))`;
 }
 
 // ---------------------------------------------------------------- types
