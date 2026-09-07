@@ -78,6 +78,7 @@ const TYPO: Record<string, Record<string, CSSProperties>> = {
   services: CARD,
   image: { title: CAPTION },
   video: { title: CAPTION },
+  slideshow: CARD,
   callout: CARD,
   certs: {
     title: { font: `600 1rem/1.35 ${C.sans}`, color: C.text },

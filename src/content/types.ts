@@ -82,7 +82,7 @@ export type FieldStyle = {
  * the middle of the hobbies grid, a video under the timeline, an image beside
  * the about text. The section decides the LAYOUT; the kind decides the BOX.
  */
-export type ItemKind = 'card' | 'credential' | 'image' | 'video' | 'text' | 'callout';
+export type ItemKind = 'card' | 'credential' | 'image' | 'video' | 'slideshow' | 'text' | 'callout';
 
 /** Which typography and field list a block kind borrows. */
 export const BLOCK_OWNER: Record<ItemKind, string> = {
@@ -90,6 +90,10 @@ export const BLOCK_OWNER: Record<ItemKind, string> = {
   credential: 'certs',
   image: 'image',
   video: 'video',
+  // A slideshow inside an ordinary section. Its slides live on the block
+  // itself (`slides`), not in the section's item list, so a work card and a
+  // set of screenshots can sit in one grid without the grid holding slides.
+  slideshow: 'slideshow',
   text: 'about',
   // A boxed note with a heading, in the gold highlight the band uses. Added
   // for parity with the VTS Site Editor, which has one (2026-09).
@@ -138,6 +142,14 @@ export type Item = {
   /** px, 100–420. */
   imgH?: number;
   imgFit?: 'cover' | 'contain';
+  /** A slideshow block's thumbnail strip. Absent means shown; false hides it. */
+  thumbs?: boolean;
+  /**
+   * A slideshow block's own slides, each an item with an image, alt text, a
+   * title and a caption — the same shape a gallery section's items have, so
+   * one renderer draws both.
+   */
+  slides?: Item[];
 
   fields?: string[];
   styles?: Record<string, FieldStyle>;
@@ -304,6 +316,8 @@ export const DEFAULT_FIELDS: Record<string, string[]> = {
   callout: ['title', 'body'],
   /** A slide. The gallery draws these itself; the editor reads the list. */
   gallery: ['image', 'alt', 'title', 'caption'],
+  /** A slideshow block. Its slides are edited on the block, not as fields. */
+  slideshow: ['title', 'body'],
   certificates: ['image', 'title', 'meta', 'credential', 'link'],
 };
 

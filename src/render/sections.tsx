@@ -71,8 +71,28 @@ function boxStyle(item: Item, fallbackTone: keyof typeof TONES): CSSProperties {
  * the screen, which `1 / -1` cannot do at any width.
  */
 function spanStyle(item: Item): CSSProperties {
-  const full = item.span === 'full' || item.span === 2 || (item.span == null && item.feature);
+  const full =
+    item.span === 'full' ||
+    item.span === 2 ||
+    (item.span == null && (item.feature || wantsWholeRow(item)));
   return full ? { gridColumn: '1 / -1' } : {};
+}
+
+/**
+ * A picture takes the whole row (owner instruction, 2026-09).
+ *
+ * A slideshow or a photo sharing a row with a text card is a postage stamp
+ * beside a paragraph — the picture is the content, so it gets the width. An
+ * explicit `span` still wins, so a narrow one is a deliberate choice rather
+ * than something that cannot be asked for.
+ */
+function wantsWholeRow(item: Item): boolean {
+  return item.kind === 'slideshow' || item.kind === 'image';
+}
+
+/** A slideshow block's slides. Anything that is not a list is none. */
+function slidesOf(item: Item): Item[] {
+  return Array.isArray(item.slides) ? (item.slides as Item[]) : [];
 }
 
 function Fields({
@@ -131,6 +151,7 @@ function Box({
     mark = false;
   }
   const ids = fieldsFor(item, DEFAULT_FIELDS[owner] ?? []);
+  const slides = item.kind === 'slideshow' ? slidesOf(item) : null;
   return (
     <div style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}>
       {mark && (
@@ -147,7 +168,33 @@ function Box({
           ◆
         </span>
       )}
-      <Fields owner={owner} item={item} ids={ids} gap={10} />
+      {slides ? (
+        <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+          <Fields owner={owner} item={item} ids={ids} gap={10} />
+          {slides.length ? (
+            <Gallery
+              slides={slides}
+              imgFit={item.imgFit}
+              thumbs={item.thumbs}
+              name={item.title || 'Image slideshow'}
+            />
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                font: `500 .68rem/1.4 ${C.mono}`,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase',
+                color: C.faint,
+              }}
+            >
+              Slides to come
+            </p>
+          )}
+        </div>
+      ) : (
+        <Fields owner={owner} item={item} ids={ids} gap={10} />
+      )}
     </div>
   );
 }
@@ -777,8 +824,17 @@ function Certificates({ s }: { s: Section }) {
  */
 const SWIPE_PX = 40;
 
-function Gallery({ s }: { s: Section }) {
-  const slides = s.items;
+function Gallery({
+  slides,
+  imgFit,
+  thumbs: wantThumbs,
+  name,
+}: {
+  slides: Item[];
+  imgFit?: 'cover' | 'contain';
+  thumbs?: boolean;
+  name: string;
+}) {
   const count = slides.length;
   const [index, setIndex] = useState(0);
   const [broken, setBroken] = useState<Record<string, boolean>>({});
@@ -811,9 +867,8 @@ function Gallery({ s }: { s: Section }) {
   const alt = typeof slide.alt === 'string' ? slide.alt : '';
   const title = typeof slide.title === 'string' ? slide.title : '';
   const caption = typeof slide.caption === 'string' ? slide.caption : '';
-  const fit = s.imgFit ?? 'contain';
-  const thumbs = s.thumbs !== false && count > 1;
-  const name = s.title || 'Image slideshow';
+  const fit = imgFit ?? 'contain';
+  const thumbs = wantThumbs !== false && count > 1;
   const missing = !src || broken[src];
 
   const onKeyDown = (e: ReactKeyboardEvent) => {
@@ -1086,7 +1141,14 @@ export function SectionView({ s }: { s: Section }) {
       {s.type === 'timeline' && <Timeline s={s} />}
       {s.type === 'about' && <About s={s} />}
       {s.type === 'services' && <Services s={s} />}
-      {s.type === 'gallery' && <Gallery s={s} />}
+      {s.type === 'gallery' && (
+        <Gallery
+          slides={s.items}
+          imgFit={s.imgFit}
+          thumbs={s.thumbs}
+          name={s.title || 'Image slideshow'}
+        />
+      )}
       {s.type === 'certificates' && <Certificates s={s} />}
     </section>
   );
