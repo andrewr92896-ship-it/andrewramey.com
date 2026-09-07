@@ -127,13 +127,3 @@ a.cert-tile:hover {
     padding-top: 28px !important;
   }
 }
-
-/* A featured card spans two columns on a wide screen. On a phone the grid is
-   one column, where `grid-column: span 2` conjures a second column instead of
-   widening the box — the row then runs off the side of the screen. The span is
-   an inline style, so undoing it needs !important. */
-@media (max-width: 720px) {
-  .span-2 {
-    grid-column: auto !important;
-  }
-}

@@ -61,24 +61,18 @@ function boxStyle(item: Item, fallbackTone: keyof typeof TONES): CSSProperties {
 }
 
 /** Grid span. Ignored on one column, which is what phones render. */
-function spanStyle(item: Item): CSSProperties {
-  if (item.span === 'full') return { gridColumn: '1 / -1' };
-  const span = item.span ?? (item.feature ? 2 : 1);
-  return span === 2 ? { gridColumn: 'span 2' } : {};
-}
-
 /**
- * A box that spans two columns carries a class as well as the inline style, so
- * the stylesheet can take the span away on a phone — where the grid is ONE
- * column and `span 2` does not widen the box, it conjures a second column and
- * pushes the next card off the side of the screen. Owner report, 2026-09: two
- * work cards side by side on a phone with half of one off the edge.
+ * A featured card takes the WHOLE row — `1 / -1`, never `span 2`.
  *
- * `1 / -1` needs no class: on one column it is that one column.
+ * Spanning two of three columns left a third-of-a-row hole in the MIDDLE of
+ * the grid, beside the card below it: three cards at two different widths with
+ * a gap (owner report, 2026-09). It was also the one span that can be wrong:
+ * in a one-column grid `span 2` conjures a second column and runs the row off
+ * the screen, which `1 / -1` cannot do at any width.
  */
-function spanClass(item: Item): string | undefined {
-  if (item.span === 'full') return undefined;
-  return (item.span ?? (item.feature ? 2 : 1)) === 2 ? 'span-2' : undefined;
+function spanStyle(item: Item): CSSProperties {
+  const full = item.span === 'full' || item.span === 2 || (item.span == null && item.feature);
+  return full ? { gridColumn: '1 / -1' } : {};
 }
 
 function Fields({
@@ -138,10 +132,7 @@ function Box({
   }
   const ids = fieldsFor(item, DEFAULT_FIELDS[owner] ?? []);
   return (
-    <div
-      className={span ? spanClass(item) : undefined}
-      style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}
-    >
+    <div style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}>
       {mark && (
         <span
           aria-hidden="true"
@@ -224,7 +215,13 @@ function SectionHeader({ s }: { s: Section }) {
 function gridCols(s: Section, defaultMin: number): string {
   if (typeof s.cols === 'number') return `repeat(${s.cols}, minmax(0,1fr))`;
   const pictured = s.items.some((it) => typeof it.imgSrc === 'string' && it.imgSrc);
-  const min = s.colMin ?? (s.wide ? 300 : pictured ? 320 : defaultMin);
+  // A `wide` grid is the one whose cards carry a paragraph each, and its lead
+  // card spans two columns. At 300 the content column fits THREE, so the
+  // feature covered two of them and left a third-of-a-row hole beside the card
+  // below it — three cards at two different widths with a gap (owner report,
+  // 2026-09). Wide enough for only two columns, the feature is the full width
+  // and everything under it is equal.
+  const min = s.colMin ?? (s.wide ? 430 : pictured ? 320 : defaultMin);
   return `repeat(auto-fill, minmax(min(${min}px, 100%), 1fr))`;
 }
 
