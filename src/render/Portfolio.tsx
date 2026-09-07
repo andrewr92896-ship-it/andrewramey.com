@@ -130,7 +130,13 @@ function Header({ nav }: { nav: Nav }) {
 
       <nav style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {nav.items.map((it) => {
-          const href = /^(https?:|mailto:)/.test(it.target) ? it.target : `#${it.target}`;
+          // A target beginning with "/" is a PAGE on this site — /certifications
+          // — and has to be a real link. Everything else is a section on this
+          // page, which the anchor handler scrolls to. Without this a menu item
+          // for a second page could only be written as its full address, which
+          // opens in a new tab: on a Home Screen shortcut, a tab with no way
+          // back.
+          const href = /^(https?:|mailto:|\/)/.test(it.target) ? it.target : `#${it.target}`;
           return (
             <a
               key={it.label}
