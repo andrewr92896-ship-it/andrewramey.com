@@ -67,6 +67,20 @@ function spanStyle(item: Item): CSSProperties {
   return span === 2 ? { gridColumn: 'span 2' } : {};
 }
 
+/**
+ * A box that spans two columns carries a class as well as the inline style, so
+ * the stylesheet can take the span away on a phone — where the grid is ONE
+ * column and `span 2` does not widen the box, it conjures a second column and
+ * pushes the next card off the side of the screen. Owner report, 2026-09: two
+ * work cards side by side on a phone with half of one off the edge.
+ *
+ * `1 / -1` needs no class: on one column it is that one column.
+ */
+function spanClass(item: Item): string | undefined {
+  if (item.span === 'full') return undefined;
+  return (item.span ?? (item.feature ? 2 : 1)) === 2 ? 'span-2' : undefined;
+}
+
 function Fields({
   owner,
   item,
@@ -124,7 +138,10 @@ function Box({
   }
   const ids = fieldsFor(item, DEFAULT_FIELDS[owner] ?? []);
   return (
-    <div style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}>
+    <div
+      className={span ? spanClass(item) : undefined}
+      style={{ ...boxStyle(item, tone), ...(span ? spanStyle(item) : {}) }}
+    >
       {mark && (
         <span
           aria-hidden="true"

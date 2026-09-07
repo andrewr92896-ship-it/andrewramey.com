@@ -2,9 +2,9 @@
   "src/content/types.ts": "cb86776a95d78a8f76ffc6afff8bb39fd7d678f40d97bd00b15160700e78f0e9",
   "src/content/model.ts": "90433b997b3751b17da7eac4e41615f8767b356b327e860ff0d579abc5c345ea",
   "src/render/fields.tsx": "cf99165cb38f25b057bd0360262fe5b18cce2f52d775c39563e0957a37b86c3b",
-  "src/render/sections.tsx": "d8ee66480a2d139884ffc95404de2941d38d771eb81012c71b0e414ad785a6b5",
+  "src/render/sections.tsx": "49ab3865040dd3fc640610ac1a63fbe18bc60eac0f9958e25a95e1575db4c2f6",
   "src/render/Portfolio.tsx": "53a247af99d899969990e8b0f495b4e65f64a882fe70706f2dfed178d34ca18d",
   "src/render/Certifications.tsx": "e664d4093a373775102f0b4e479f33c7ab3b70e241015bfa7331f42738bc514e",
   "src/render/viewer.tsx": "b9809016dbf3623025d8d5e20153f2efcc68795ca1e28f6f916129a6442cc9d0",
-  "src/styles.css": "192e0faa2f7c9cb442c5cf720dfa69806aaad7f993763bcda773704cc1dc36bb"
+  "src/styles.css": "8d97dbfc5611b06fc745be04adf908d226cbb65092945d8476cf0bad6a8e4b75"
 }
