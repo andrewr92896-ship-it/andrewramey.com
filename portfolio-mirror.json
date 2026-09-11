@@ -5,6 +5,6 @@
   "src/render/sections.tsx": "b5fd6f2c4692b5471cecbaf8da865bac50adb1005f71cc9da9a27dfc0df64441",
   "src/render/Portfolio.tsx": "54c157fbd2376d2eceab4ef67aaa218a1362d52b1d64d3c931d43d42808b7323",
   "src/render/Certifications.tsx": "e664d4093a373775102f0b4e479f33c7ab3b70e241015bfa7331f42738bc514e",
-  "src/render/viewer.tsx": "b9809016dbf3623025d8d5e20153f2efcc68795ca1e28f6f916129a6442cc9d0",
+  "src/render/viewer.tsx": "23e4f7167cc8fa555f276e54d16bd50aad91c152d42f422528890bd605d117ca",
   "src/styles.css": "192e0faa2f7c9cb442c5cf720dfa69806aaad7f993763bcda773704cc1dc36bb"
 }

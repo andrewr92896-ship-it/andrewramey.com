@@ -14,6 +14,7 @@
 // drift impossible to ship rather than merely discouraged.
 
 import {
+  type MouseEvent as ReactMouseEvent,
   createContext,
   useCallback,
   useContext,
@@ -76,6 +77,88 @@ export function linkProps(href: string, behavior?: string) {
   return {
     href,
     ...(/^https?:/.test(href) ? { target: '_blank' as const, rel: 'noopener noreferrer' } : {}),
+  };
+}
+
+/**
+ * Save a file to the device, WITHOUT navigating away from the page.
+ *
+ * THE `download` ATTRIBUTE IS NOT ENOUGH ON iOS (owner report, 2026-09). Safari
+ * largely ignores it, so the link is an ordinary navigation: the PDF replaces
+ * the app, and added to the Home Screen there is no back button — the only way
+ * out is to close the app. It also does not save the file, which is the thing
+ * that was asked for. One control, wrong in both halves.
+ *
+ * So the bytes are FETCHED and handed to the device instead, and the page never
+ * moves. Three routes, in order:
+ *
+ * 1. **The share sheet** (`navigator.share` with a file). On iOS this is the
+ *    real "save it" — "Save to Files" is in that sheet — and it is the only
+ *    route that reliably puts a file anywhere on an iPhone.
+ * 2. **A blob URL and a synthetic `download` link.** What every desktop browser
+ *    does, and what Safari honours for a same-origin blob.
+ * 3. **A NEW TAB, never the current one.** If the bytes cannot be read at all,
+ *    opening elsewhere still leaves the app where it was — which is the whole
+ *    point. Navigating in place is the bug and must never be the fallback.
+ *
+ * It reports what happened rather than assuming: `cancelled` is somebody
+ * dismissing the share sheet, which is not a failure and must not then
+ * download the file behind their back.
+ */
+export type SaveResult = 'shared' | 'saved' | 'cancelled' | 'opened';
+
+export async function saveFile(src: string, name: string): Promise<SaveResult> {
+  let blob: Blob;
+  try {
+    // Same-origin, so the session cookie rides along — the résumé route is
+    // authenticated and there is nothing else to send.
+    const res = await fetch(src, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(String(res.status));
+    blob = await res.blob();
+  } catch {
+    window.open(src, '_blank', 'noopener');
+    return 'opened';
+  }
+
+  const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      return 'shared';
+    } catch (err) {
+      // Dismissing the sheet is an answer, not a failure.
+      if ((err as Error)?.name === 'AbortError') return 'cancelled';
+      // Anything else — a lost user gesture, an unsupported type — falls
+      // through to the link below rather than leaving the press doing nothing.
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  // Some browsers refuse to act on a link that is not in the document.
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoked on the next tick: revoking immediately can cancel the save.
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return 'saved';
+}
+
+/**
+ * The click handler for a download link.
+ *
+ * IT STAYS AN ANCHOR WITH A REAL `href`. Right-click → Save link as, middle
+ * click, and what a screen reader announces all depend on the link being a
+ * link — and a modified click is the reader asking for the browser's own
+ * behaviour, so it is left alone.
+ */
+export function downloadOnClick(src: string, name: string) {
+  return (e: ReactMouseEvent) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    void saveFile(src, name);
   };
 }
 
@@ -164,6 +247,15 @@ function FileViewer({
   }, [onClose]);
 
   const name = file.label || file.src.split('/').pop() || 'File';
+  /**
+   * What the SAVED file is called, which is not what the header calls it.
+   *
+   * `label` is the wording on whatever was clicked — "Download PDF", "My
+   * résumé" — and is right in the heading and wrong on disk, where it would
+   * save a PDF under a name with no extension. The address is the only thing
+   * that knows the real filename.
+   */
+  const saveName = decodeURIComponent(file.src.split('/').pop()?.split('?')[0] || '') || name;
   const embed = kind === 'image' || (kind === 'pdf' && !narrow);
 
   return (
@@ -213,7 +305,8 @@ function FileViewer({
           */}
           <a
             href={file.src}
-            download=""
+            download={saveName}
+            onClick={downloadOnClick(file.src, saveName)}
             title="Download"
             aria-label="Download"
             style={{
