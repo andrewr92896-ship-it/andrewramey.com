@@ -361,6 +361,52 @@ and kept only so the site can be served from Cloudflare Pages without changes �
 covers the file proxy too). Run it before pushing; a failed build means the site
 does not update, and the previous version stays live.
 
+## WAITING ON A LONG JOB: ONE WATCHER, NEVER A LOOP PER CHECK
+
+The browser suites take tens of minutes. **Do not poll them with a fresh
+`sleep`-and-check background job each time you get curious.** That is the one
+failure mode of waiting here, it has already happened once (2026-09), and it is
+a known, reported pattern rather than a local quirk — see
+`anthropics/claude-code` issues #90930, #95202 and #44957.
+
+What goes wrong, in order:
+
+- **Every progress check mints a new notifier.** A backgrounded `sleep N; check`
+  pings on exit, so fifteen glances at a log become fifteen independent things
+  waking the session. One session here accumulated exactly that.
+- **A waiter keyed on a log file outlives the file's meaning.** `until grep -q
+  "passed" <log>` can never exit once the run is restarted into a *different*
+  log. It is an unbounded loop with an unreachable condition and no timeout of
+  its own, and it will still be spinning hours later.
+- **The session cannot then reach a terminal state.** It wakes, finds nothing
+  to report, replies, and the next timer fires. It is not self-limiting; it ends
+  when a human kills it.
+- **`pkill chrome` / `pkill node` does NOT clear them.** They are bash loops
+  running `sleep` and match neither. That is how a session can truthfully
+  believe it has stopped while five watchers are still running — which is worse
+  than not stopping, because the report is wrong.
+
+The rules:
+
+1. **Start ONE waiter and leave it alone.** `run_in_background: true` with a
+   command that exits when the condition is true. You are notified on exit;
+   that is the whole mechanism. Do not re-arm it "just to check".
+2. **Never poll for something the harness already tells you about.** A
+   backgrounded command notifies you when it finishes. The until-loop idiom is
+   for external state nothing is tracking — not for a job you started.
+3. **Prefer `Monitor`** for anything that wants more than one report. It pushes
+   events; a sleep loop makes you pull them.
+4. **A notification carrying nothing actionable gets NO user-visible reply.**
+   Fifteen "nothing new" messages is what turned invisible churn into spam on
+   the owner's screen.
+5. **Before claiming anything is stopped, LIST what is running** — everything,
+   not a `pkill` by name. `pgrep -af "until grep|sleep|chrome|node server"`.
+   Say "stopped" only after that comes back empty.
+
+If it does get away: **Ctrl+X Ctrl+K, twice within three seconds**, stops every
+background task in the session. The task panel can show "Running" for a job that
+is already dead, so trust a process listing over the panel.
+
 ## Conventions
 
 - Plain, direct voice. No filler, no marketing superlatives, no "passionate
